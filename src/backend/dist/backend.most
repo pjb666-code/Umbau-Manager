@@ -1,0 +1,257 @@
+// Version: 1.0.0
+type Bereich__602579833 = Text;
+type ContactId__788846296 = Text;
+type Contact__891480783 =
+  {
+    email : Text;
+    firma : Text;
+    id : ContactId__788846296;
+    name : Text;
+    notizen : Text;
+    owner : Principal;
+    rolle : Text;
+    telefon : Text;
+    verknuepfteDokumente : [DocumentId__869630293];
+    verknuepfteTasks : [TaskId__627915889]
+  };
+type CostItemId__926090791 = Text;
+type CostItem__313192392 =
+  {
+    beschreibung : Text;
+    betrag : Float;
+    datum : Time__900049286;
+    dokumentId : ?DocumentId__869630293;
+    handwerker : ?Text;
+    id : CostItemId__926090791;
+    kategorie : Text;
+    owner : Principal;
+    projektId : ProjectId__918059747;
+    status : Text
+  };
+type Data__159895909<T> = {var count : Nat__490723111; elements : [var ?T]};
+type Data__791452850<K, V> =
+  {var count : Nat__490723111; kvs : [var ?(K, V)]};
+type DocumentId__869630293 = Text;
+type Document__636554508 =
+  {
+    bereich : Bereich__602579833;
+    blob : ExternalBlob__140892883;
+    id : DocumentId__869630293;
+    name : Text;
+    owner : Principal;
+    status : Text;
+    typ : Text
+  };
+type ExternalBlob__140892883 = Blob;
+type HelpfulLink__175979667 =
+  {
+    beschreibung : Text;
+    id : LinkId__204616818;
+    kategorie : Text;
+    logoUrl : Text;
+    owner : Principal;
+    titel : Text;
+    url : Text
+  };
+type Int__270357528 = Int__616954475;
+type Int__616954475 = Int;
+type Internal__667636161<T> =
+  {children : [var ?Node__92254746<T>]; data : Data__159895909<T>};
+type Internal__8484328<K, V> =
+  {children : [var ?Node__46230540<K, V>]; data : Data__791452850<K, V>};
+type InviteCode__1048610429 = {code : Text; role : UserRole__521596351};
+type InviteCode__760512071 =
+  {code : Text; created : Time__900049286; used : Bool};
+type InviteToken__32156228 = Text;
+type Leaf__520550824<T> = {data : Data__159895909<T>};
+type Leaf__809889148<K, V> = {data : Data__791452850<K, V>};
+type LinkId__204616818 = Text;
+type Map__158565046<K, V> = Map__297112838<K, V>;
+type Map__297112838<K, V> =
+  {var root : Node__46230540<K, V>; var size : Nat__490723111};
+type Map__605269027<K, V> = Map__158565046<K, V>;
+type MediaId__161116790 = Text;
+type Media__686493839 =
+  {
+    blob : ExternalBlob__140892883;
+    id : MediaId__161116790;
+    kategorie : Text;
+    name : Text;
+    owner : Principal;
+    position : Int;
+    tags : [Text];
+    typ : Text
+  };
+type Nat__490723111 = Nat__920180692;
+type Nat__920180692 = Nat;
+type Node__46230540<K, V> =
+  {#internal : Internal__8484328<K, V>; #leaf : Leaf__809889148<K, V>};
+type Node__92254746<T> =
+  {#internal : Internal__667636161<T>; #leaf : Leaf__520550824<T>};
+type ProjectId__918059747 = Text;
+type Project__762223144 =
+  {
+    color : Text;
+    endDate : ?Time__900049286;
+    id : ProjectId__918059747;
+    kategorie : Text;
+    kunde : Text;
+    name : Text;
+    owner : Principal;
+    parentProjectId : ?ProjectId__918059747;
+    startDate : ?Time__900049286;
+    verantwortlicherKontakt : ?ContactId__788846296
+  };
+type RSVP__178930616 =
+  {
+    attending : Bool;
+    inviteCode : Text;
+    name : Text;
+    timestamp : Time__900049286
+  };
+type Set__532252804<T> = Set__710576254<T>;
+type Set__710576254<T> =
+  {var root : Node__92254746<T>; var size : Nat__490723111};
+type TaskId__627915889 = Text;
+type Task__972485619 =
+  {
+    bereich : Bereich__602579833;
+    beschreibung : Text;
+    dringlichkeit : Nat;
+    faelligkeit : Time__900049286;
+    gewerke : Text;
+    id : TaskId__627915889;
+    kategorie : Text;
+    owner : Principal;
+    projectId : ?ProjectId__918059747;
+    status : Text;
+    titel : Text;
+    verantwortlicherKontakt : ?ContactId__788846296
+  };
+type TextValue__579719267 = Text;
+type Time__796480547 = Int__270357528;
+type Time__900049286 = Time__796480547;
+type UserProfile__491224006 =
+  {email : Text; name : Text; role : Text; userType : UserType__137500837};
+type UserRole__521596351 = {#admin; #guest; #user};
+type UserType__137500837 = {#business; #privat};
+actor {
+  stable accessControlState :
+    {
+      var adminAssigned : Bool;
+      userRoles : Map__605269027<Principal, UserRole__521596351>
+    };
+  stable var codesMap :
+    {
+      var root : Node__46230540<Text, InviteCode__1048610429>;
+      var size : Nat__490723111
+    };
+  stable var completedTasks :
+    {
+      var root : Node__46230540<Principal, Set__532252804<TaskId__627915889>>;
+      var size : Nat__490723111
+    };
+  stable var contacts :
+    {
+      var root :
+        Node__46230540<Principal,
+                        Map__605269027<ContactId__788846296,
+                                        Contact__891480783>>;
+      var size : Nat__490723111
+    };
+  stable var costItems :
+    {
+      var root :
+        Node__46230540<Principal,
+                        Map__605269027<ProjectId__918059747,
+                                        [CostItem__313192392]>>;
+      var size : Nat__490723111
+    };
+  stable var customCategoriesStore :
+    {
+      var root :
+        Node__46230540<Principal,
+                        Map__605269027<TextValue__579719267,
+                                        Map__605269027<TextValue__579719267,
+                                                        TextValue__579719267>>>;
+      var size : Nat__490723111
+    };
+  stable var documentProjectMap :
+    {
+      var root : Node__46230540<DocumentId__869630293, ProjectId__918059747>;
+      var size : Nat__490723111
+    };
+  stable var documents :
+    {
+      var root :
+        Node__46230540<Principal,
+                        Map__605269027<DocumentId__869630293,
+                                        Document__636554508>>;
+      var size : Nat__490723111
+    };
+  stable var inviteOwners :
+    {
+      var root : Node__46230540<InviteToken__32156228, Principal>;
+      var size : Nat__490723111
+    };
+  stable inviteState :
+    {
+      var inviteCodes : Map__605269027<Text, InviteCode__760512071>;
+      var rsvps : Map__605269027<Text, RSVP__178930616>
+    };
+  stable var inviteTokens :
+    {
+      var root : Node__46230540<InviteToken__32156228, ?UserRole__521596351>;
+      var size : Nat__490723111
+    };
+  stable var links :
+    {
+      var root :
+        Node__46230540<Principal,
+                        Map__605269027<LinkId__204616818,
+                                        HelpfulLink__175979667>>;
+      var size : Nat__490723111
+    };
+  stable var media :
+    {
+      var root :
+        Node__46230540<Principal,
+                        Map__605269027<MediaId__161116790, Media__686493839>>;
+      var size : Nat__490723111
+    };
+  stable var mediaProjectMap :
+    {
+      var root : Node__46230540<MediaId__161116790, ProjectId__918059747>;
+      var size : Nat__490723111
+    };
+  stable var projectSharing :
+    {
+      var root : Node__46230540<Principal, Principal>;
+      var size : Nat__490723111
+    };
+  stable var projects :
+    {
+      var root :
+        Node__46230540<Principal,
+                        Map__605269027<ProjectId__918059747,
+                                        Project__762223144>>;
+      var size : Nat__490723111
+    };
+  stable var tasks :
+    {
+      var root :
+        Node__46230540<Principal,
+                        Map__605269027<TaskId__627915889, Task__972485619>>;
+      var size : Nat__490723111
+    };
+  stable var teamMembers :
+    {
+      var root : Node__46230540<Principal, UserRole__521596351>;
+      var size : Nat__490723111
+    };
+  stable var userProfiles :
+    {
+      var root : Node__46230540<Principal, UserProfile__491224006>;
+      var size : Nat__490723111
+    }
+};

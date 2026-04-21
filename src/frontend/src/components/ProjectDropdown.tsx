@@ -46,15 +46,17 @@ export default function ProjectDropdown({
       value={currentProjectId || undefined}
       onValueChange={handleValueChange}
     >
-      <SelectTrigger className="w-[200px] bg-background border-input">
+      <SelectTrigger className="w-[220px] bg-muted/60 dark:bg-muted/40 border border-border shadow-sm font-medium rounded-lg px-3 py-2 hover:bg-muted transition-colors">
         <SelectValue placeholder={isLoading ? "Lädt..." : "Projekt wählen"}>
           {currentProject ? (
             <div className="flex items-center gap-2">
               <div
-                className="w-3 h-3 rounded-full shrink-0"
+                className="w-3 h-3 rounded-full shrink-0 ring-1 ring-border/50"
                 style={{ backgroundColor: currentProject.color || "#3b82f6" }}
               />
-              <span className="truncate">{currentProject.name}</span>
+              <span className="truncate font-medium">
+                {currentProject.name}
+              </span>
             </div>
           ) : (
             <span className="text-muted-foreground">Kein Projekt</span>

@@ -11,7 +11,15 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { Calendar, Clock, Plus, Search, Trash2, User } from "lucide-react";
+import {
+  Calendar,
+  CheckSquare,
+  Clock,
+  Plus,
+  Search,
+  Trash2,
+  User,
+} from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import type { Task } from "../backend";
@@ -34,6 +42,7 @@ import {
   getBereiche,
   getGewerke,
 } from "../lib/customCategories";
+import { getCurrentWeekRange, isThisWeek } from "../lib/dateUtils";
 import { useFocusOnMount } from "../lib/focusManager";
 import { getAndClearSelectedTaskId } from "../utils/urlParams";
 
@@ -44,6 +53,29 @@ type EditingTask = Task & {
   faelligkeitDate: string;
   faelligkeitTime: string;
 };
+
+// Gewerk → left border color mapping
+const GEWERK_BORDER_COLOR: Record<string, string> = {
+  Dachdecker: "border-l-blue-500",
+  Elektriker: "border-l-yellow-500",
+  Heizung: "border-l-orange-500",
+  Sanitär: "border-l-cyan-500",
+  Maler: "border-l-purple-500",
+  Zimmermann: "border-l-amber-700",
+  Architekt: "border-l-indigo-500",
+};
+
+function getGewerkBorderColor(gewerke: string): string {
+  return GEWERK_BORDER_COLOR[gewerke] ?? "border-l-gray-300";
+}
+
+// Priority header tint
+function getPriorityHeaderTint(dringlichkeit: bigint): string {
+  const level = Number(dringlichkeit);
+  if (level === 3) return "bg-red-50 dark:bg-red-950/20";
+  if (level === 2) return "bg-orange-50 dark:bg-orange-950/20";
+  return "";
+}
 
 export default function Tasks({
   currentProjectId,
@@ -89,12 +121,19 @@ export default function Tasks({
   const createTitleInputRef = useFocusOnMount<HTMLInputElement>(isCreateOpen);
   const editTitleInputRef = useFocusOnMount<HTMLInputElement>(!!editingTask);
 
+  // Current week range for column subtitle
+  const weekRange = useMemo(() => {
+    const { start, end } = getCurrentWeekRange();
+    const fmt = (d: Date) =>
+      d.toLocaleDateString("de-DE", { day: "2-digit", month: "2-digit" });
+    return `${fmt(start)} – ${fmt(end)}`;
+  }, []);
+
   // Check for selected task from Dashboard on mount
   useEffect(() => {
     const taskId = getAndClearSelectedTaskId();
     if (taskId) {
       setSelectedTaskId(taskId);
-      // Scroll to task after a short delay to ensure rendering
       setTimeout(() => {
         const element = document.getElementById(`task-${taskId}`);
         if (element) {
@@ -122,7 +161,7 @@ export default function Tasks({
     });
   }, [allTasks, searchQuery, filterGewerke, filterBereich, filterProject]);
 
-  // Group tasks by status
+  // Group tasks by status — "Diese Woche" is date-based, not status-based
   const tasksByStatus = useMemo(() => {
     const groups: Record<TaskStatus, Task[]> = {
       Aufgaben: [],
@@ -130,11 +169,19 @@ export default function Tasks({
       "Benötigt Feedback": [],
       Erledigt: [],
     };
+
     for (const task of filteredTasks) {
-      if (task.status in groups) {
-        groups[task.status as TaskStatus].push(task);
+      if (task.status === "Erledigt") {
+        groups.Erledigt.push(task);
+      } else if (task.faelligkeit > 0n && isThisWeek(task.faelligkeit)) {
+        groups["Diese Woche"].push(task);
+      } else if (task.status === "Benötigt Feedback") {
+        groups["Benötigt Feedback"].push(task);
+      } else {
+        groups.Aufgaben.push(task);
       }
     }
+
     return groups;
   }, [filteredTasks]);
 
@@ -178,7 +225,7 @@ export default function Tasks({
         newTask.verantwortlicherKontakt === "none"
           ? null
           : newTask.verantwortlicherKontakt,
-      projectId: currentProjectId ?? null, // Always use top-level project ID
+      projectId: currentProjectId ?? null,
     });
 
     setNewTask({
@@ -222,7 +269,7 @@ export default function Tasks({
       faelligkeit: fälligkeitTimestamp,
       kategorie: editingTask.kategorie,
       verantwortlicherKontakt: editingTask.verantwortlicherKontakt || null,
-      projectId: currentProjectId ?? null, // Always use top-level project ID
+      projectId: currentProjectId ?? null,
     });
 
     setEditingTask(null);
@@ -298,29 +345,64 @@ export default function Tasks({
     return project ? project.name : "Unbekannt";
   };
 
-  const statusColumns: { status: TaskStatus; title: string; color: string }[] =
-    [
-      {
-        status: "Aufgaben",
-        title: "Aufgaben",
-        color: "border-gray-300 dark:border-gray-700",
-      },
-      {
-        status: "Diese Woche",
-        title: "Diese Woche",
-        color: "border-blue-300 dark:border-blue-700",
-      },
-      {
-        status: "Benötigt Feedback",
-        title: "Benötigt Feedback",
-        color: "border-orange-300 dark:border-orange-700",
-      },
-      {
-        status: "Erledigt",
-        title: "Erledigt",
-        color: "border-green-300 dark:border-green-700",
-      },
-    ];
+  // Overdue / today badge helper
+  const getDueBadge = (faelligkeit: bigint) => {
+    if (!faelligkeit || faelligkeit <= 0n) return null;
+    const nowMs = Date.now();
+    const dueMs = Number(faelligkeit) / 1_000_000;
+    const dueDate = new Date(dueMs);
+    const today = new Date();
+
+    const isSameDay =
+      dueDate.getFullYear() === today.getFullYear() &&
+      dueDate.getMonth() === today.getMonth() &&
+      dueDate.getDate() === today.getDate();
+
+    if (isSameDay) {
+      return (
+        <span className="text-xs font-medium rounded-full px-2 py-0.5 bg-yellow-100 text-yellow-800 dark:bg-yellow-900/40 dark:text-yellow-300">
+          Heute
+        </span>
+      );
+    }
+    if (dueMs < nowMs) {
+      return (
+        <span className="text-xs font-medium rounded-full px-2 py-0.5 bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300">
+          Überfällig
+        </span>
+      );
+    }
+    return null;
+  };
+
+  const statusColumns: {
+    status: TaskStatus;
+    title: string;
+    color: string;
+    subtitle?: string;
+  }[] = [
+    {
+      status: "Aufgaben",
+      title: "Aufgaben",
+      color: "border-gray-300 dark:border-gray-700",
+    },
+    {
+      status: "Diese Woche",
+      title: "Diese Woche",
+      color: "border-blue-300 dark:border-blue-700",
+      subtitle: weekRange,
+    },
+    {
+      status: "Benötigt Feedback",
+      title: "Benötigt Feedback",
+      color: "border-orange-300 dark:border-orange-700",
+    },
+    {
+      status: "Erledigt",
+      title: "Erledigt",
+      color: "border-green-300 dark:border-green-700",
+    },
+  ];
 
   return (
     <div className="container mx-auto p-6 space-y-6">
@@ -578,79 +660,110 @@ export default function Tasks({
 
       {/* Kanban Board */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        {statusColumns.map(({ status, title, color }) => (
+        {statusColumns.map(({ status, title, color, subtitle }) => (
           <Card key={status} className={`border-t-4 ${color}`}>
             <CardHeader>
               <CardTitle className="text-lg flex items-center justify-between">
-                {title}
+                <div className="flex flex-col gap-0.5">
+                  <span>{title}</span>
+                  {subtitle && (
+                    <span className="text-xs font-normal text-muted-foreground">
+                      {subtitle}
+                    </span>
+                  )}
+                </div>
                 <Badge variant="secondary">
                   {tasksByStatus[status].length}
                 </Badge>
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
-              {tasksByStatus[status].map((task) => (
-                <Card
-                  key={task.id}
-                  id={`task-${task.id}`}
-                  className={`cursor-pointer hover:shadow-md transition-shadow ${
-                    selectedTaskId === task.id ? "ring-2 ring-primary" : ""
-                  }`}
-                  onClick={() => {
-                    setEditingTask({
-                      ...task,
-                      faelligkeitDate: extractDate(task.faelligkeit),
-                      faelligkeitTime: extractTime(task.faelligkeit),
-                    });
-                  }}
-                >
-                  <CardContent className="p-4 space-y-3">
-                    <div className="flex items-start justify-between gap-2">
-                      <h3 className="font-semibold text-sm">{task.titel}</h3>
+              {tasksByStatus[status].map((task) => {
+                const borderColor = getGewerkBorderColor(task.gewerke);
+                const headerTint = getPriorityHeaderTint(task.dringlichkeit);
+                const dueBadge = getDueBadge(task.faelligkeit);
+
+                return (
+                  <Card
+                    key={task.id}
+                    id={`task-${task.id}`}
+                    className={`cursor-pointer hover:shadow-md transition-shadow border-l-4 ${borderColor} ${
+                      selectedTaskId === task.id ? "ring-2 ring-primary" : ""
+                    }`}
+                    onClick={() => {
+                      setEditingTask({
+                        ...task,
+                        faelligkeitDate: extractDate(task.faelligkeit),
+                        faelligkeitTime: extractTime(task.faelligkeit),
+                      });
+                    }}
+                  >
+                    <CardContent className="p-0">
+                      {/* Header row with title + priority dot */}
                       <div
-                        className={`w-2 h-2 rounded-full ${getDringlichkeitColor(task.dringlichkeit)} shrink-0 mt-1`}
-                      />
-                    </div>
-                    {task.beschreibung && (
-                      <p className="text-xs text-muted-foreground line-clamp-2">
-                        {task.beschreibung}
-                      </p>
-                    )}
-                    <div className="flex flex-wrap gap-2">
-                      <Badge variant="outline" className="text-xs">
-                        {task.gewerke}
-                      </Badge>
-                      <Badge variant="outline" className="text-xs">
-                        {task.bereich}
-                      </Badge>
-                    </div>
-                    <div className="space-y-1 text-xs text-muted-foreground">
-                      <div className="flex items-center gap-1">
-                        <Calendar className="h-3 w-3" />
-                        <span>{formatDateTime(task.faelligkeit)}</span>
+                        className={`flex items-start justify-between gap-2 px-4 pt-4 pb-2 rounded-t-md ${headerTint}`}
+                      >
+                        <h3 className="font-semibold text-sm leading-snug">
+                          {task.titel}
+                        </h3>
+                        <div
+                          className={`w-3 h-3 rounded-full ${getDringlichkeitColor(task.dringlichkeit)} shrink-0 mt-0.5`}
+                        />
                       </div>
-                      {task.projectId && (
-                        <div className="flex items-center gap-1">
-                          <span className="font-medium">Phase:</span>
-                          <span>{getProjectName(task.projectId)}</span>
+
+                      {/* Body */}
+                      <div className="px-4 pb-4 space-y-3">
+                        {task.beschreibung && (
+                          <p className="text-xs text-muted-foreground line-clamp-2">
+                            {task.beschreibung}
+                          </p>
+                        )}
+                        <div className="flex flex-wrap gap-1.5">
+                          <Badge variant="outline" className="text-xs">
+                            {task.gewerke}
+                          </Badge>
+                          <Badge variant="outline" className="text-xs">
+                            {task.bereich}
+                          </Badge>
                         </div>
-                      )}
-                      {task.verantwortlicherKontakt && (
-                        <div className="flex items-center gap-1">
-                          <User className="h-3 w-3" />
-                          <span>
-                            {getContactName(task.verantwortlicherKontakt)}
-                          </span>
+                        <div className="space-y-1 text-xs text-muted-foreground">
+                          <div className="flex items-center gap-1 flex-wrap">
+                            <Calendar className="h-3 w-3 shrink-0" />
+                            <span>{formatDateTime(task.faelligkeit)}</span>
+                            {dueBadge}
+                          </div>
+                          {task.projectId && (
+                            <div className="flex items-center gap-1">
+                              <span className="font-medium">Phase:</span>
+                              <span>{getProjectName(task.projectId)}</span>
+                            </div>
+                          )}
+                          {task.verantwortlicherKontakt && (
+                            <div className="flex items-center gap-1">
+                              <User className="h-3 w-3" />
+                              <span>
+                                {getContactName(task.verantwortlicherKontakt)}
+                              </span>
+                            </div>
+                          )}
                         </div>
-                      )}
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
+                      </div>
+                    </CardContent>
+                  </Card>
+                );
+              })}
               {tasksByStatus[status].length === 0 && (
-                <p className="text-sm text-muted-foreground text-center py-8">
-                  Keine Aufgaben
-                </p>
+                <div className="flex flex-col items-center justify-center py-10 text-center">
+                  <CheckSquare className="w-10 h-10 mx-auto mb-3 text-muted-foreground/30" />
+                  <p className="text-sm font-medium text-muted-foreground">
+                    Keine Aufgaben
+                  </p>
+                  <p className="text-xs text-muted-foreground/60 mt-1">
+                    {status === "Diese Woche"
+                      ? "Keine Aufgaben diese Woche fällig"
+                      : "Diese Spalte ist leer"}
+                  </p>
+                </div>
               )}
             </CardContent>
           </Card>

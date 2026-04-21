@@ -8,6 +8,7 @@ import {
 } from "@/components/ui/card";
 import { CheckCircle2, Loader2, XCircle } from "lucide-react";
 import { useEffect, useState } from "react";
+import { useActor } from "../hooks/useActor";
 import { useInternetIdentity } from "../hooks/useInternetIdentity";
 import { useProjectSession } from "../hooks/useProjectSession";
 import { useJoinFamily } from "../hooks/useQueries";
@@ -19,6 +20,7 @@ interface ApplyInviteProps {
 
 export default function ApplyInvite({ onSuccess }: ApplyInviteProps) {
   const { identity, isInitializing } = useInternetIdentity();
+  const { actor } = useActor();
   const joinFamily = useJoinFamily();
   const { setLastUsedProjectId: _setLastUsedProjectId } = useProjectSession();
   const [status, setStatus] = useState<"processing" | "success" | "error">(
@@ -38,6 +40,8 @@ export default function ApplyInvite({ onSuccess }: ApplyInviteProps) {
         return;
       }
 
+      if (!actor) return;
+
       const inviteToken = getUrlParameter("invite");
       if (!inviteToken) {
         setStatus("error");
@@ -53,22 +57,23 @@ export default function ApplyInvite({ onSuccess }: ApplyInviteProps) {
         // Note: The backend doesn't return a project ID from validateInviteCode
         // So we pass undefined and let the parent component handle navigation
         setTimeout(() => onSuccess(undefined), 2000);
-      } catch (error: any) {
+      } catch (error: unknown) {
+        const err = error as { message?: string };
         console.error("Invite claim error:", error);
         setStatus("error");
         setErrorMessage(
-          error.message ||
+          err.message ||
             "Fehler beim Beitreten zum Projekt. Der Code könnte ungültig oder bereits verwendet sein.",
         );
       }
     };
 
     processInvite();
-  }, [identity, isInitializing, joinFamily, onSuccess]);
+  }, [identity, isInitializing, actor, joinFamily, onSuccess]);
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-blue-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 flex items-center justify-center p-4">
-      <Card className="w-full max-w-md">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-background to-blue-50 dark:from-muted/30 dark:via-background dark:to-muted/30 flex items-center justify-center p-4">
+      <Card className="w-full max-w-md shadow-lg">
         <CardHeader>
           <CardTitle className="text-center">Einladung verarbeiten</CardTitle>
           <CardDescription className="text-center">

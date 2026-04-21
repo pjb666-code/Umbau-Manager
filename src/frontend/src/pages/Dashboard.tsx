@@ -172,6 +172,7 @@ export default function Dashboard({ currentProjectId }: DashboardProps) {
       description: "Laufende Bauphasen",
       color: "text-blue-600 dark:text-blue-400",
       bgColor: "bg-blue-100 dark:bg-blue-950",
+      borderColor: "border-t-4 border-blue-500",
       page: "roadmap" as const,
     },
     {
@@ -179,8 +180,9 @@ export default function Dashboard({ currentProjectId }: DashboardProps) {
       value: totalTasks,
       icon: Clock,
       description: "Zu erledigende Tasks",
-      color: "text-orange-600 dark:text-orange-400",
-      bgColor: "bg-orange-100 dark:bg-orange-950",
+      color: "text-amber-600 dark:text-amber-400",
+      bgColor: "bg-amber-100 dark:bg-amber-950",
+      borderColor: "border-t-4 border-amber-500",
       page: "tasks" as const,
       filter: "open",
     },
@@ -191,6 +193,7 @@ export default function Dashboard({ currentProjectId }: DashboardProps) {
       description: "Abgeschlossene Aufgaben",
       color: "text-green-600 dark:text-green-400",
       bgColor: "bg-green-100 dark:bg-green-950",
+      borderColor: "border-t-4 border-green-500",
       page: "tasks" as const,
       filter: "completed",
     },
@@ -201,6 +204,7 @@ export default function Dashboard({ currentProjectId }: DashboardProps) {
       description: "Warten auf Rückmeldung",
       color: "text-purple-600 dark:text-purple-400",
       bgColor: "bg-purple-100 dark:bg-purple-950",
+      borderColor: "border-t-4 border-purple-500",
       page: "tasks" as const,
       filter: "feedback",
     },
@@ -768,7 +772,7 @@ export default function Dashboard({ currentProjectId }: DashboardProps) {
         {stats.map((stat) => (
           <Card
             key={stat.title}
-            className="cursor-pointer hover:shadow-lg transition-shadow"
+            className={`cursor-pointer hover:shadow-lg transition-all hover:-translate-y-0.5 ${stat.borderColor}`}
             onClick={() => handleStatCardClick(stat.page, stat.filter)}
           >
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">

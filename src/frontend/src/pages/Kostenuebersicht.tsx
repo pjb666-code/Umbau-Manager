@@ -20,6 +20,8 @@ import {
 } from "@/components/ui/table";
 import {
   ArrowUpDown,
+  Calculator,
+  Euro,
   FileText,
   Filter,
   Loader2,
@@ -28,7 +30,7 @@ import {
   Trash2,
   X,
 } from "lucide-react";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { toast } from "sonner";
 import type { CostItem, DocumentId, Project } from "../backend";
 import { UserType } from "../backend";
@@ -100,6 +102,40 @@ export default function Kostenuebersicht({
     handwerker: "",
     dokumentId: "none",
   });
+
+  // Kreditrechner state
+  const [kredit, setKredit] = useState({
+    kreditsumme: "",
+    zinssatz: "",
+    laufzeit: "",
+  });
+
+  const kreditErgebnis = useMemo(() => {
+    const summe = Number.parseFloat(kredit.kreditsumme);
+    const zins = Number.parseFloat(kredit.zinssatz);
+    const jahre = Number.parseFloat(kredit.laufzeit);
+    if (
+      !summe ||
+      !jahre ||
+      summe <= 0 ||
+      jahre <= 0 ||
+      Number.isNaN(summe) ||
+      Number.isNaN(zins) ||
+      Number.isNaN(jahre)
+    )
+      return null;
+    const n = jahre * 12;
+    let monatlicheRate: number;
+    if (!zins || zins === 0) {
+      monatlicheRate = summe / n;
+    } else {
+      const r = zins / 100 / 12;
+      monatlicheRate = (summe * (r * (1 + r) ** n)) / ((1 + r) ** n - 1);
+    }
+    const gesamtbetrag = monatlicheRate * n;
+    const gesamtzinsen = gesamtbetrag - summe;
+    return { monatlicheRate, gesamtzinsen, gesamtbetrag };
+  }, [kredit]);
 
   const isLoading =
     costItemsLoading || projectsLoading || documentsLoading || mediaLoading;
@@ -724,11 +760,12 @@ export default function Kostenuebersicht({
                 </Card>
               )}
             {sortedCostItems.length === 0 ? (
-              <div className="text-center py-12">
-                <p className="text-muted-foreground">
+              <div className="text-center py-16">
+                <Euro className="w-12 h-12 mx-auto mb-3 text-muted-foreground/30" />
+                <p className="font-medium text-muted-foreground">
                   Keine Kostenpunkte vorhanden
                 </p>
-                <p className="text-sm text-muted-foreground mt-2">
+                <p className="text-sm text-muted-foreground/70 mt-1">
                   {statusFilter !== "all"
                     ? "Keine Kostenpunkte mit diesem Status gefunden"
                     : currentProjectId
@@ -1149,6 +1186,162 @@ export default function Kostenuebersicht({
           pdfUrl={selectedDocumentUrl}
           title={selectedDocumentTitle}
         />
+
+        {/* Kreditrechner */}
+        <div className="pt-2">
+          <div className="flex items-center gap-2 mb-4">
+            <div className="h-px flex-1 bg-border" />
+            <div className="flex items-center gap-2 text-muted-foreground text-sm font-medium px-2">
+              <Calculator className="h-4 w-4" />
+              Kreditrechner
+            </div>
+            <div className="h-px flex-1 bg-border" />
+          </div>
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-xl">
+                <Calculator className="h-5 w-5 text-primary" />
+                Kreditrechner
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                {/* Inputs */}
+                <div className="space-y-5">
+                  <div className="space-y-2">
+                    <Label
+                      htmlFor="kredit-summe"
+                      className="text-sm font-medium"
+                    >
+                      Kreditsumme
+                    </Label>
+                    <div className="relative">
+                      <Input
+                        id="kredit-summe"
+                        type="number"
+                        min="0"
+                        step="1000"
+                        placeholder="z.B. 200000"
+                        value={kredit.kreditsumme}
+                        onChange={(e) =>
+                          setKredit({ ...kredit, kreditsumme: e.target.value })
+                        }
+                        className="pr-8"
+                        data-ocid="kredit-summe"
+                      />
+                      <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">
+                        €
+                      </span>
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <Label
+                      htmlFor="kredit-zinssatz"
+                      className="text-sm font-medium"
+                    >
+                      Zinssatz p.a.
+                    </Label>
+                    <div className="relative">
+                      <Input
+                        id="kredit-zinssatz"
+                        type="number"
+                        min="0"
+                        step="0.1"
+                        placeholder="z.B. 3.5"
+                        value={kredit.zinssatz}
+                        onChange={(e) =>
+                          setKredit({ ...kredit, zinssatz: e.target.value })
+                        }
+                        className="pr-8"
+                        data-ocid="kredit-zinssatz"
+                      />
+                      <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">
+                        %
+                      </span>
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <Label
+                      htmlFor="kredit-laufzeit"
+                      className="text-sm font-medium"
+                    >
+                      Laufzeit
+                    </Label>
+                    <div className="relative">
+                      <Input
+                        id="kredit-laufzeit"
+                        type="number"
+                        min="1"
+                        step="1"
+                        placeholder="z.B. 20"
+                        value={kredit.laufzeit}
+                        onChange={(e) =>
+                          setKredit({ ...kredit, laufzeit: e.target.value })
+                        }
+                        className="pr-14"
+                        data-ocid="kredit-laufzeit"
+                      />
+                      <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">
+                        Jahre
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Results */}
+                <div className="flex flex-col justify-center">
+                  {kreditErgebnis ? (
+                    <div className="space-y-3" data-ocid="kredit-ergebnis">
+                      <div className="rounded-xl border bg-primary/5 p-5 flex items-center justify-between">
+                        <div>
+                          <div className="text-sm text-muted-foreground">
+                            Monatliche Rate
+                          </div>
+                          <div className="text-3xl font-bold text-primary mt-1">
+                            {formatCurrency(kreditErgebnis.monatlicheRate)}
+                          </div>
+                        </div>
+                        <Euro className="h-8 w-8 text-primary/30" />
+                      </div>
+                      <div className="rounded-xl border bg-card p-4 flex items-center justify-between">
+                        <div>
+                          <div className="text-sm text-muted-foreground">
+                            Gesamtzinsen
+                          </div>
+                          <div className="text-xl font-semibold text-orange-600 mt-0.5">
+                            {formatCurrency(kreditErgebnis.gesamtzinsen)}
+                          </div>
+                        </div>
+                      </div>
+                      <div className="rounded-xl border bg-card p-4 flex items-center justify-between">
+                        <div>
+                          <div className="text-sm text-muted-foreground">
+                            Gesamtbetrag
+                          </div>
+                          <div className="text-xl font-semibold mt-0.5">
+                            {formatCurrency(kreditErgebnis.gesamtbetrag)}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="rounded-xl border border-dashed bg-muted/30 p-8 flex flex-col items-center justify-center text-center gap-3">
+                      <Calculator className="h-10 w-10 text-muted-foreground/40" />
+                      <div>
+                        <p className="text-sm font-medium text-muted-foreground">
+                          Ergebnis erscheint hier
+                        </p>
+                        <p className="text-xs text-muted-foreground/60 mt-1">
+                          Geben Sie Kreditsumme, Zinssatz und Laufzeit ein
+                        </p>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
       </div>
     </ErrorBoundary>
   );

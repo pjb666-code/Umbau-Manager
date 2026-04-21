@@ -274,21 +274,21 @@ export interface backendInterface {
     getCallerUserProfile(): Promise<UserProfile | null>;
     getCallerUserRole(): Promise<UserRole>;
     getContact(contactId: ContactId): Promise<Contact>;
+    getDocumentsByProject(projectId: ProjectId): Promise<Array<Document>>;
     getHelpfulLink(linkId: LinkId): Promise<HelpfulLink>;
     getInviteCode(generatedCode: string): Promise<InviteCode__1 | null>;
     getInviteCodes(): Promise<Array<InviteCode>>;
     getKostenUebersicht(projektId: ProjectId | null): Promise<KostenUebersicht>;
-    getKostenpunkteByProjekt(projectId: ProjectId): Promise<Array<CostItem>>;
     getKostenpunkteByProjectAndPhases(projectId: ProjectId): Promise<Array<CostItem>>;
+    getKostenpunkteByProjekt(projectId: ProjectId): Promise<Array<CostItem>>;
+    getMediaByProject(projectId: ProjectId): Promise<Array<Media>>;
     getPhasesByProject(parentId: ProjectId): Promise<Array<Project>>;
     getProjekt(id: ProjectId): Promise<Project>;
     getTask(taskId: TaskId): Promise<Task>;
+    getTasksByProject(projectId: ProjectId): Promise<Array<Task>>;
     getTopLevelProjects(): Promise<Array<Project>>;
     getUserDocuments(): Promise<Array<Document>>;
     getUserMedia(): Promise<Array<Media>>;
-    getMediaByProject(arg0: ProjectId): Promise<Array<Media>>;
-    getTasksByProject(arg0: ProjectId): Promise<Array<Task>>;
-    getDocumentsByProject(arg0: ProjectId): Promise<Array<Document>>;
     getUserProfile(user: Principal): Promise<UserProfile | null>;
     initializeAccessControl(): Promise<void>;
     isCallerAdmin(): Promise<boolean>;
@@ -800,6 +800,20 @@ export class Backend implements backendInterface {
             return result;
         }
     }
+    async getDocumentsByProject(arg0: ProjectId): Promise<Array<Document>> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.getDocumentsByProject(arg0);
+                return from_candid_vec_n42(this._uploadFile, this._downloadFile, result);
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.getDocumentsByProject(arg0);
+            return from_candid_vec_n42(this._uploadFile, this._downloadFile, result);
+        }
+    }
     async getHelpfulLink(arg0: LinkId): Promise<HelpfulLink> {
         if (this.processError) {
             try {
@@ -818,14 +832,14 @@ export class Backend implements backendInterface {
         if (this.processError) {
             try {
                 const result = await this.actor.getInviteCode(arg0);
-                return from_candid_opt_n42(this._uploadFile, this._downloadFile, result);
+                return from_candid_opt_n46(this._uploadFile, this._downloadFile, result);
             } catch (e) {
                 this.processError(e);
                 throw new Error("unreachable");
             }
         } else {
             const result = await this.actor.getInviteCode(arg0);
-            return from_candid_opt_n42(this._uploadFile, this._downloadFile, result);
+            return from_candid_opt_n46(this._uploadFile, this._downloadFile, result);
         }
     }
     async getInviteCodes(): Promise<Array<InviteCode>> {
@@ -856,6 +870,20 @@ export class Backend implements backendInterface {
             return result;
         }
     }
+    async getKostenpunkteByProjectAndPhases(arg0: ProjectId): Promise<Array<CostItem>> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.getKostenpunkteByProjectAndPhases(arg0);
+                return from_candid_vec_n25(this._uploadFile, this._downloadFile, result);
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.getKostenpunkteByProjectAndPhases(arg0);
+            return from_candid_vec_n25(this._uploadFile, this._downloadFile, result);
+        }
+    }
     async getKostenpunkteByProjekt(arg0: ProjectId): Promise<Array<CostItem>> {
         if (this.processError) {
             try {
@@ -870,18 +898,18 @@ export class Backend implements backendInterface {
             return from_candid_vec_n25(this._uploadFile, this._downloadFile, result);
         }
     }
-    async getKostenpunkteByProjectAndPhases(arg0: ProjectId): Promise<Array<CostItem>> {
+    async getMediaByProject(arg0: ProjectId): Promise<Array<Media>> {
         if (this.processError) {
             try {
-                const result = await this.actor.getKostenpunkteByProjectAndPhases(arg0);
-                return from_candid_vec_n25(this._uploadFile, this._downloadFile, result);
+                const result = await this.actor.getMediaByProject(arg0);
+                return from_candid_vec_n49(this._uploadFile, this._downloadFile, result);
             } catch (e) {
                 this.processError(e);
                 throw new Error("unreachable");
             }
         } else {
-            const result = await this.actor.getKostenpunkteByProjectAndPhases(arg0);
-            return from_candid_vec_n25(this._uploadFile, this._downloadFile, result);
+            const result = await this.actor.getMediaByProject(arg0);
+            return from_candid_vec_n49(this._uploadFile, this._downloadFile, result);
         }
     }
     async getPhasesByProject(arg0: ProjectId): Promise<Array<Project>> {
@@ -926,6 +954,20 @@ export class Backend implements backendInterface {
             return from_candid_Task_n31(this._uploadFile, this._downloadFile, result);
         }
     }
+    async getTasksByProject(arg0: ProjectId): Promise<Array<Task>> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.getTasksByProject(arg0);
+                return from_candid_vec_n30(this._uploadFile, this._downloadFile, result);
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.getTasksByProject(arg0);
+            return from_candid_vec_n30(this._uploadFile, this._downloadFile, result);
+        }
+    }
     async getTopLevelProjects(): Promise<Array<Project>> {
         if (this.processError) {
             try {
@@ -944,14 +986,14 @@ export class Backend implements backendInterface {
         if (this.processError) {
             try {
                 const result = await this.actor.getUserDocuments();
-                return from_candid_vec_n45(this._uploadFile, this._downloadFile, result);
+                return from_candid_vec_n42(this._uploadFile, this._downloadFile, result);
             } catch (e) {
                 this.processError(e);
                 throw new Error("unreachable");
             }
         } else {
             const result = await this.actor.getUserDocuments();
-            return from_candid_vec_n45(this._uploadFile, this._downloadFile, result);
+            return from_candid_vec_n42(this._uploadFile, this._downloadFile, result);
         }
     }
     async getUserMedia(): Promise<Array<Media>> {
@@ -966,48 +1008,6 @@ export class Backend implements backendInterface {
         } else {
             const result = await this.actor.getUserMedia();
             return from_candid_vec_n49(this._uploadFile, this._downloadFile, result);
-        }
-    }
-    async getMediaByProject(arg0: ProjectId): Promise<Array<Media>> {
-        if (this.processError) {
-            try {
-                const result = await this.actor.getMediaByProject(arg0);
-                return from_candid_vec_n49(this._uploadFile, this._downloadFile, result);
-            } catch (e) {
-                this.processError(e);
-                throw new Error("unreachable");
-            }
-        } else {
-            const result = await this.actor.getMediaByProject(arg0);
-            return from_candid_vec_n49(this._uploadFile, this._downloadFile, result);
-        }
-    }
-    async getTasksByProject(arg0: ProjectId): Promise<Array<Task>> {
-        if (this.processError) {
-            try {
-                const result = await this.actor.getTasksByProject(arg0);
-                return from_candid_vec_n30(this._uploadFile, this._downloadFile, result);
-            } catch (e) {
-                this.processError(e);
-                throw new Error("unreachable");
-            }
-        } else {
-            const result = await this.actor.getTasksByProject(arg0);
-            return from_candid_vec_n30(this._uploadFile, this._downloadFile, result);
-        }
-    }
-    async getDocumentsByProject(arg0: ProjectId): Promise<Array<Document>> {
-        if (this.processError) {
-            try {
-                const result = await this.actor.getDocumentsByProject(arg0);
-                return from_candid_vec_n45(this._uploadFile, this._downloadFile, result);
-            } catch (e) {
-                this.processError(e);
-                throw new Error("unreachable");
-            }
-        } else {
-            const result = await this.actor.getDocumentsByProject(arg0);
-            return from_candid_vec_n45(this._uploadFile, this._downloadFile, result);
         }
     }
     async getUserProfile(arg0: Principal): Promise<UserProfile | null> {
@@ -1252,14 +1252,14 @@ export class Backend implements backendInterface {
 function from_candid_CostItem_n26(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: _CostItem): CostItem {
     return from_candid_record_n27(_uploadFile, _downloadFile, value);
 }
-async function from_candid_Document_n46(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: _Document): Promise<Document> {
-    return await from_candid_record_n47(_uploadFile, _downloadFile, value);
+async function from_candid_Document_n43(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: _Document): Promise<Document> {
+    return await from_candid_record_n44(_uploadFile, _downloadFile, value);
 }
-async function from_candid_ExternalBlob_n48(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: _ExternalBlob): Promise<ExternalBlob> {
+async function from_candid_ExternalBlob_n45(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: _ExternalBlob): Promise<ExternalBlob> {
     return await _downloadFile(value);
 }
-function from_candid_InviteCode__1_n43(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: _InviteCode__1): InviteCode__1 {
-    return from_candid_record_n44(_uploadFile, _downloadFile, value);
+function from_candid_InviteCode__1_n47(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: _InviteCode__1): InviteCode__1 {
+    return from_candid_record_n48(_uploadFile, _downloadFile, value);
 }
 async function from_candid_Media_n50(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: _Media): Promise<Media> {
     return await from_candid_record_n51(_uploadFile, _downloadFile, value);
@@ -1303,8 +1303,8 @@ function from_candid_opt_n29(_uploadFile: (file: ExternalBlob) => Promise<Uint8A
 function from_candid_opt_n35(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: [] | [_UserProfile]): UserProfile | null {
     return value.length === 0 ? null : from_candid_UserProfile_n36(_uploadFile, _downloadFile, value[0]);
 }
-function from_candid_opt_n42(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: [] | [_InviteCode__1]): InviteCode__1 | null {
-    return value.length === 0 ? null : from_candid_InviteCode__1_n43(_uploadFile, _downloadFile, value[0]);
+function from_candid_opt_n46(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: [] | [_InviteCode__1]): InviteCode__1 | null {
+    return value.length === 0 ? null : from_candid_InviteCode__1_n47(_uploadFile, _downloadFile, value[0]);
 }
 function from_candid_opt_n6(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: [] | [boolean]): boolean | null {
     return value.length === 0 ? null : value[0];
@@ -1444,19 +1444,7 @@ function from_candid_record_n37(_uploadFile: (file: ExternalBlob) => Promise<Uin
         email: value.email
     };
 }
-function from_candid_record_n44(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: {
-    code: string;
-    role: _UserRole;
-}): {
-    code: string;
-    role: UserRole;
-} {
-    return {
-        code: value.code,
-        role: from_candid_UserRole_n40(_uploadFile, _downloadFile, value.role)
-    };
-}
-async function from_candid_record_n47(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: {
+async function from_candid_record_n44(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: {
     id: _DocumentId;
     typ: string;
     status: string;
@@ -1479,8 +1467,20 @@ async function from_candid_record_n47(_uploadFile: (file: ExternalBlob) => Promi
         status: value.status,
         bereich: value.bereich,
         owner: value.owner,
-        blob: await from_candid_ExternalBlob_n48(_uploadFile, _downloadFile, value.blob),
+        blob: await from_candid_ExternalBlob_n45(_uploadFile, _downloadFile, value.blob),
         name: value.name
+    };
+}
+function from_candid_record_n48(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: {
+    code: string;
+    role: _UserRole;
+}): {
+    code: string;
+    role: UserRole;
+} {
+    return {
+        code: value.code,
+        role: from_candid_UserRole_n40(_uploadFile, _downloadFile, value.role)
     };
 }
 function from_candid_record_n5(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: {
@@ -1518,7 +1518,7 @@ async function from_candid_record_n51(_uploadFile: (file: ExternalBlob) => Promi
         id: value.id,
         typ: value.typ,
         owner: value.owner,
-        blob: await from_candid_ExternalBlob_n48(_uploadFile, _downloadFile, value.blob),
+        blob: await from_candid_ExternalBlob_n45(_uploadFile, _downloadFile, value.blob),
         name: value.name,
         tags: value.tags,
         kategorie: value.kategorie,
@@ -1571,8 +1571,8 @@ function from_candid_vec_n30(_uploadFile: (file: ExternalBlob) => Promise<Uint8A
 function from_candid_vec_n33(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: Array<[_ProjectId, _Project]>): Array<[ProjectId, Project]> {
     return value.map((x)=>from_candid_tuple_n34(_uploadFile, _downloadFile, x));
 }
-async function from_candid_vec_n45(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: Array<_Document>): Promise<Array<Document>> {
-    return await Promise.all(value.map(async (x)=>await from_candid_Document_n46(_uploadFile, _downloadFile, x)));
+async function from_candid_vec_n42(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: Array<_Document>): Promise<Array<Document>> {
+    return await Promise.all(value.map(async (x)=>await from_candid_Document_n43(_uploadFile, _downloadFile, x)));
 }
 async function from_candid_vec_n49(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: Array<_Media>): Promise<Array<Media>> {
     return await Promise.all(value.map(async (x)=>await from_candid_Media_n50(_uploadFile, _downloadFile, x)));

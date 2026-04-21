@@ -1,0 +1,264 @@
+type _CaffeineStorageRefillResult = 
+ record {
+   success: opt bool;
+   topped_up_amount: opt nat;
+ };
+type _CaffeineStorageRefillInformation = record {
+                                           proposed_top_up_amount: opt nat;};
+type _CaffeineStorageCreateCertificateResult = 
+ record {
+   blob_hash: text;
+   method: text;
+ };
+type UserType = 
+ variant {
+   business;
+   privat;
+ };
+type UserRole = 
+ variant {
+   admin;
+   guest;
+   user;
+ };
+type UserProfile = 
+ record {
+   email: text;
+   name: text;
+   role: text;
+   userType: UserType;
+ };
+type Time = int;
+type TeamMember = 
+ record {
+   "principal": principal;
+   role: UserRole;
+ };
+type TaskId = text;
+type Task = 
+ record {
+   bereich: Bereich;
+   beschreibung: text;
+   dringlichkeit: nat;
+   faelligkeit: Time;
+   gewerke: text;
+   id: TaskId;
+   kategorie: text;
+   owner: principal;
+   projectId: opt ProjectId;
+   status: text;
+   titel: text;
+   verantwortlicherKontakt: opt ContactId;
+ };
+type RSVP = 
+ record {
+   attending: bool;
+   inviteCode: text;
+   name: text;
+   timestamp: Time;
+ };
+type ProjectId = text;
+type Project = 
+ record {
+   color: text;
+   endDate: opt Time;
+   id: ProjectId;
+   kategorie: text;
+   kunde: text;
+   name: text;
+   owner: principal;
+   parentProjectId: opt ProjectId;
+   startDate: opt Time;
+   verantwortlicherKontakt: opt ContactId;
+ };
+type MediaUpdate = 
+ record {
+   kategorie: opt text;
+   name: opt text;
+   position: opt int;
+   tags: opt vec text;
+   typ: opt text;
+ };
+type MediaPositionUpdate = 
+ record {
+   mediaId: MediaId;
+   newPosition: int;
+ };
+type MediaId = text;
+type Media = 
+ record {
+   "blob": ExternalBlob;
+   id: MediaId;
+   kategorie: text;
+   name: text;
+   owner: principal;
+   position: int;
+   tags: vec text;
+   typ: text;
+ };
+type LinkId = text;
+type KostenUebersicht = 
+ record {
+   bezahlt: float64;
+   gesamt: float64;
+   offen: float64;
+ };
+type InviteToken = text;
+type InviteCode__1 = 
+ record {
+   code: text;
+   role: UserRole;
+ };
+type InviteCode = 
+ record {
+   code: text;
+   created: Time;
+   used: bool;
+ };
+type HelpfulLink = 
+ record {
+   beschreibung: text;
+   id: LinkId;
+   kategorie: text;
+   logoUrl: text;
+   owner: principal;
+   titel: text;
+   url: text;
+ };
+type ExternalBlob = blob;
+type DocumentId = text;
+type Document = 
+ record {
+   bereich: Bereich;
+   "blob": ExternalBlob;
+   id: DocumentId;
+   name: text;
+   owner: principal;
+   status: text;
+   typ: text;
+ };
+type CostItemId = text;
+type CostItem = 
+ record {
+   beschreibung: text;
+   betrag: float64;
+   datum: Time;
+   dokumentId: opt DocumentId;
+   handwerker: opt text;
+   id: CostItemId;
+   kategorie: text;
+   owner: principal;
+   projektId: ProjectId;
+   status: text;
+ };
+type ContactId = text;
+type Contact = 
+ record {
+   email: text;
+   firma: text;
+   id: ContactId;
+   name: text;
+   notizen: text;
+   owner: principal;
+   rolle: text;
+   telefon: text;
+   verknuepfteDokumente: vec DocumentId;
+   verknuepfteTasks: vec TaskId;
+ };
+type Bereich = text;
+service : {
+  _caffeineStorageBlobIsLive: (hash: blob) -> (bool) query;
+  _caffeineStorageBlobsToDelete: () -> (vec blob) query;
+  _caffeineStorageConfirmBlobDeletion: (blobs: vec blob) -> ();
+  _caffeineStorageCreateCertificate: (blobHash: text) ->
+   (_CaffeineStorageCreateCertificateResult);
+  _caffeineStorageRefillCashier: (refillInformation:
+   opt _CaffeineStorageRefillInformation) -> (_CaffeineStorageRefillResult);
+  _caffeineStorageUpdateGatewayPrincipals: () -> ();
+  addKostenpunkt: (projectId: ProjectId, kost: CostItem) -> ();
+  assignCallerUserRole: (user: principal, role: UserRole) -> ();
+  bulkUpdateMediaPositions: (updates: vec MediaPositionUpdate) -> ();
+  claimInviteToken: (token: InviteToken) -> ();
+  createContact: (id: ContactId, name: text, firma: text, rolle: text, email:
+   text, telefon: text, notizen: text, verknuepfteTasks: vec TaskId,
+   verknuepfteDokumente: vec DocumentId) -> ();
+  createHelpfulLink: (id: LinkId, titel: text, beschreibung: text, url: 
+   text, kategorie: text, logoUrl: text) -> ();
+  createInvite: (generatedCode: text, role: UserRole) -> ();
+  createInviteToken: (role: UserRole) -> (InviteToken);
+  createProjekt: (id: ProjectId, name: text, kunde: opt text, color: 
+   text, start: opt Time, end: opt Time, kategorie: text,
+   verantwortlicherKontakt: opt ContactId, costItemsArray: vec CostItem,
+   parentProjectId: opt ProjectId) -> ();
+  createTask: (id: TaskId, titel: text, beschreibung: text, gewerke: 
+   text, status: text, dringlichkeit: nat, bereich: Bereich, faelligkeit:
+   Time, kategorie: text, verantwortlicherKontakt: opt ContactId, projectId:
+   opt ProjectId) -> ();
+  deleteContact: (contactId: ContactId) -> ();
+  deleteDocument: (documentId: DocumentId) -> ();
+  deleteHelpfulLink: (linkId: LinkId) -> ();
+  deleteKostenpunkt: (projectId: ProjectId, kostenpunktId: CostItemId) -> ();
+  deleteProjekt: (id: ProjectId) -> ();
+  deleteTask: (taskId: TaskId) -> ();
+  deleteUserMedia: (mediaId: text) -> ();
+  filterProjectsByUserType: (userType: UserType) -> (vec Project) query;
+  generateInviteCode: () -> (text);
+  getAllContacts: () -> (vec Contact) query;
+  getAllHelpfulLinks: () -> (vec HelpfulLink) query;
+  getAllKostenpunkte: () -> (vec CostItem) query;
+  getAllProjects: () -> (vec Project) query;
+  getAllRSVPs: () -> (vec RSVP) query;
+  getAllTasks: () -> (vec Task) query;
+  getAllUserProjects: () -> (vec record {
+                                   ProjectId;
+                                   Project;
+                                 }) query;
+  getCallerUserProfile: () -> (opt UserProfile) query;
+  getCallerUserRole: () -> (UserRole) query;
+  getContact: (contactId: ContactId) -> (Contact) query;
+  getDocumentsByProject: (projectId: ProjectId) -> (vec Document) query;
+  getHelpfulLink: (linkId: LinkId) -> (HelpfulLink) query;
+  getInviteCode: (generatedCode: text) -> (opt InviteCode__1) query;
+  getInviteCodes: () -> (vec InviteCode) query;
+  getKostenUebersicht: (projektId: opt ProjectId) -> (KostenUebersicht) query;
+  getKostenpunkteByProjectAndPhases: (projectId: ProjectId) ->
+   (vec CostItem) query;
+  getKostenpunkteByProjekt: (projectId: ProjectId) -> (vec CostItem) query;
+  getMediaByProject: (projectId: ProjectId) -> (vec Media) query;
+  getPhasesByProject: (parentId: ProjectId) -> (vec Project) query;
+  getProjekt: (id: ProjectId) -> (Project) query;
+  getTask: (taskId: TaskId) -> (Task) query;
+  getTasksByProject: (projectId: ProjectId) -> (vec Task) query;
+  getTopLevelProjects: () -> (vec Project) query;
+  getUserDocuments: () -> (vec Document) query;
+  getUserMedia: () -> (vec Media) query;
+  getUserProfile: (user: principal) -> (opt UserProfile) query;
+  initializeAccessControl: () -> ();
+  isCallerAdmin: () -> (bool) query;
+  listTeamMembers: () -> (vec TeamMember) query;
+  removeTeamMember: ("principal": principal) -> ();
+  saveCallerUserProfile: (profile: UserProfile) -> ();
+  submitRSVP: (name: text, attending: bool, inviteCode: text) -> ();
+  updateContact: (id: ContactId, name: text, firma: text, rolle: text, email:
+   text, telefon: text, notizen: text, verknuepfteTasks: vec TaskId,
+   verknuepfteDokumente: vec DocumentId) -> ();
+  updateHelpfulLink: (id: LinkId, titel: text, beschreibung: text, url: 
+   text, kategorie: text, logoUrl: text) -> ();
+  updateKostenpunkt: (projectId: ProjectId, kostId: CostItemId, updatedKost:
+   CostItem) -> ();
+  updateMedia: (id: text, updates: MediaUpdate) -> ();
+  updateProjekt: (id: ProjectId, name: text, kunde: opt text, color: 
+   text, start: opt Time, end: opt Time, kategorie: text,
+   verantwortlicherKontakt: opt ContactId, costItemsArray: vec CostItem) ->
+   ();
+  updateTask: (id: TaskId, titel: text, beschreibung: text, gewerke: 
+   text, status: text, dringlichkeit: nat, bereich: Bereich, faelligkeit:
+   Time, kategorie: text, verantwortlicherKontakt: opt ContactId, projectId:
+   opt ProjectId) -> ();
+  updateTeamMemberRole: ("principal": principal, role: UserRole) -> ();
+  uploadDocumentWithPDF: (id: text, name: text, bereich: Bereich, typ: 
+   text, status: text, "blob": ExternalBlob, projectId: opt ProjectId) -> ();
+  uploadMedia: (id: text, name: text, kategorie: text, typ: text, position:
+   int, tags: vec text, "blob": ExternalBlob, projectId: opt ProjectId) -> ();
+  validateInviteCode: (generatedCode: text) -> ();
+}

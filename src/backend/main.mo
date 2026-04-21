@@ -1130,8 +1130,9 @@ actor {
             case (null) { [] };
           };
         });
-        let phaseItems = phaseItemArrays.flatten();
-        projectItems.concat(phaseItems);
+        var phaseItems : [CostItem] = [];
+        for (arr in phaseItemArrays.values()) { phaseItems := phaseItems.concat<CostItem>(arr) };
+        projectItems.concat<CostItem>(phaseItems);
       };
     };
   };
@@ -1142,7 +1143,9 @@ actor {
     };
     let userCostItems = getUserCostItems(effectiveOwner(caller));
     let allCostArrays = userCostItems.values().toArray();
-    allCostArrays.flatten();
+    var allCostResult : [CostItem] = [];
+    for (arr in allCostArrays.values()) { allCostResult := allCostResult.concat<CostItem>(arr) };
+    allCostResult;
   };
 
   public type KostenUebersicht = {
@@ -1172,13 +1175,12 @@ actor {
                 { gesamt = 0.0; bezahlt = 0.0; offen = 0.0 };
               };
               case (?koste) {
-                let sum = koste.foldLeft(0.0, func(acc, k) { acc + k.betrag });
-                let paidSum = koste.foldLeft(
-                  0.0,
-                  func(acc, k) {
-                    if (k.status == "bezahlt") { acc + k.betrag } else { acc };
-                  },
-                );
+                var sum : Float = 0.0;
+                for (k in koste.values()) { sum := sum + k.betrag };
+                var paidSum : Float = 0.0;
+                for (k in koste.values()) {
+                  if (k.status == "bezahlt") { paidSum := paidSum + k.betrag };
+                };
                 {
                   gesamt = sum;
                   bezahlt = paidSum;
@@ -1191,14 +1193,14 @@ actor {
       };
       case (null) {
         let allCostArrays = userCostItems.values().toArray();
-        let allCosts = allCostArrays.flatten();
-        let sum = allCosts.foldLeft(0.0, func(acc, k) { acc + k.betrag });
-        let paidSum = allCosts.foldLeft(
-          0.0,
-          func(acc, k) {
-            if (k.status == "bezahlt") { acc + k.betrag } else { acc };
-          },
-        );
+        var allCosts : [CostItem] = [];
+        for (arr in allCostArrays.values()) { allCosts := allCosts.concat<CostItem>(arr) };
+        var sum : Float = 0.0;
+        for (k in allCosts.values()) { sum := sum + k.betrag };
+        var paidSum : Float = 0.0;
+        for (k in allCosts.values()) {
+          if (k.status == "bezahlt") { paidSum := paidSum + k.betrag };
+        };
         {
           gesamt = sum;
           bezahlt = paidSum;

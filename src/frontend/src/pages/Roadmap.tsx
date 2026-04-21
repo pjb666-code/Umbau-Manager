@@ -21,6 +21,7 @@ import {
   Calendar as CalendarIcon,
   ChevronDown,
   ChevronRight,
+  ClipboardList,
   Edit,
   List,
   Plus,
@@ -702,13 +703,16 @@ export default function Roadmap({ currentProjectId }: RoadmapProps) {
               filteredProjects.map((project) => {
                 const isExpanded = expandedProjects.has(project.id);
                 return (
-                  <Card key={project.id} className="overflow-hidden">
+                  <Card
+                    key={project.id}
+                    className="overflow-hidden shadow-sm hover:shadow-md transition-shadow"
+                  >
                     <Collapsible
                       open={isExpanded}
                       onOpenChange={() => toggleProjectExpansion(project.id)}
                     >
                       <CardHeader
-                        className="cursor-pointer hover:bg-accent/50 transition-colors"
+                        className="cursor-pointer hover:bg-accent/50 transition-colors p-5"
                         onClick={() => toggleProjectExpansion(project.id)}
                       >
                         <div className="flex items-center justify-between">
@@ -795,11 +799,17 @@ export default function Roadmap({ currentProjectId }: RoadmapProps) {
               })
             ) : (
               <Card>
-                <CardContent className="py-12 text-center">
-                  <p className="text-muted-foreground">
+                <CardContent className="py-16 text-center">
+                  <ClipboardList className="w-12 h-12 mx-auto mb-3 text-muted-foreground/40" />
+                  <p className="font-medium text-muted-foreground">
                     {selectedCategory
-                      ? `Keine Projekte in der Kategorie "${selectedCategory}" gefunden.`
-                      : "Noch keine Phasen vorhanden. Fügen Sie die erste Phase hinzu!"}
+                      ? `Keine Phasen in der Kategorie "${selectedCategory}" gefunden`
+                      : "Noch keine Phasen vorhanden"}
+                  </p>
+                  <p className="text-sm text-muted-foreground/70 mt-1">
+                    {selectedCategory
+                      ? "Wählen Sie eine andere Kategorie oder erstellen Sie eine neue Phase"
+                      : "Fügen Sie die erste Phase hinzu um loszulegen"}
                   </p>
                 </CardContent>
               </Card>

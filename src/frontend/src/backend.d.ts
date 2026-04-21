@@ -182,20 +182,20 @@ export interface backendInterface {
     getCallerUserProfile(): Promise<UserProfile | null>;
     getCallerUserRole(): Promise<UserRole>;
     getContact(contactId: ContactId): Promise<Contact>;
+    getDocumentsByProject(projectId: ProjectId): Promise<Array<Document>>;
     getHelpfulLink(linkId: LinkId): Promise<HelpfulLink>;
     getInviteCode(generatedCode: string): Promise<InviteCode__1 | null>;
     getInviteCodes(): Promise<Array<InviteCode>>;
     getKostenUebersicht(projektId: ProjectId | null): Promise<KostenUebersicht>;
-    getKostenpunkteByProjekt(projectId: ProjectId): Promise<Array<CostItem>>;
     getKostenpunkteByProjectAndPhases(projectId: ProjectId): Promise<Array<CostItem>>;
+    getKostenpunkteByProjekt(projectId: ProjectId): Promise<Array<CostItem>>;
+    getMediaByProject(projectId: ProjectId): Promise<Array<Media>>;
     getPhasesByProject(parentId: ProjectId): Promise<Array<Project>>;
     getProjekt(id: ProjectId): Promise<Project>;
     getTask(taskId: TaskId): Promise<Task>;
+    getTasksByProject(projectId: ProjectId): Promise<Array<Task>>;
     getTopLevelProjects(): Promise<Array<Project>>;
     getUserDocuments(): Promise<Array<Document>>;
-    getDocumentsByProject(projectId: ProjectId): Promise<Array<Document>>;
-    getMediaByProject(projectId: ProjectId): Promise<Array<Media>>;
-    getTasksByProject(projectId: ProjectId): Promise<Array<Task>>;
     getUserMedia(): Promise<Array<Media>>;
     getUserProfile(user: Principal): Promise<UserProfile | null>;
     initializeAccessControl(): Promise<void>;
@@ -211,7 +211,7 @@ export interface backendInterface {
     updateProjekt(id: ProjectId, name: string, kunde: string | null, color: string, start: Time | null, end: Time | null, kategorie: string, verantwortlicherKontakt: ContactId | null, costItemsArray: Array<CostItem>): Promise<void>;
     updateTask(id: TaskId, titel: string, beschreibung: string, gewerke: string, status: string, dringlichkeit: bigint, bereich: Bereich, faelligkeit: Time, kategorie: string, verantwortlicherKontakt: ContactId | null, projectId: ProjectId | null): Promise<void>;
     updateTeamMemberRole(principal: Principal, role: UserRole): Promise<void>;
-    uploadDocumentWithPDF(id: string, name: string, bereich: Bereich, typ: string, status: string, blob: ExternalBlob, projectId?: ProjectId | null): Promise<void>;
-    uploadMedia(id: string, name: string, kategorie: string, typ: string, position: bigint, tags: Array<string>, blob: ExternalBlob, projectId?: ProjectId | null): Promise<void>;
+    uploadDocumentWithPDF(id: string, name: string, bereich: Bereich, typ: string, status: string, blob: ExternalBlob, projectId: ProjectId | null): Promise<void>;
+    uploadMedia(id: string, name: string, kategorie: string, typ: string, position: bigint, tags: Array<string>, blob: ExternalBlob, projectId: ProjectId | null): Promise<void>;
     validateInviteCode(generatedCode: string): Promise<void>;
 }

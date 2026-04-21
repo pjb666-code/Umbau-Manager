@@ -22,11 +22,7 @@ if (typeof window !== "undefined") {
 }
 
 import { Toaster } from "@/components/ui/sonner";
-import {
-  QueryClient,
-  QueryClientProvider,
-  useQueryClient,
-} from "@tanstack/react-query";
+import { useQueryClient } from "@tanstack/react-query";
 import { ThemeProvider } from "next-themes";
 // ============================================================================
 import { useEffect, useState } from "react";
@@ -54,19 +50,6 @@ import Roadmap from "./pages/Roadmap";
 import Tasks from "./pages/Tasks";
 import WelcomeScreen from "./pages/WelcomeScreen";
 import { getUrlParameter } from "./utils/urlParams";
-
-const queryClient = new QueryClient({
-  defaultOptions: {
-    queries: {
-      staleTime: 1000 * 60 * 5,
-      refetchOnWindowFocus: false,
-      retry: 1,
-    },
-    mutations: {
-      retry: 1,
-    },
-  },
-});
 
 type Page =
   | "dashboard"
@@ -160,7 +143,7 @@ function AppContent() {
   // Reset initialNavDone on logout so the logic runs again on next login
   const handleLogout = async () => {
     await clear();
-    queryClient.clear();
+    qc.clear();
     clearLastUsedProjectId();
     setCurrentProjectId(null);
     setCurrentPage("welcome");
@@ -314,12 +297,10 @@ function AppContent() {
 export default function App() {
   return (
     <ErrorBoundary>
-      <QueryClientProvider client={queryClient}>
-        <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
-          <AppContent />
-          <Toaster />
-        </ThemeProvider>
-      </QueryClientProvider>
+      <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
+        <AppContent />
+        <Toaster />
+      </ThemeProvider>
     </ErrorBoundary>
   );
 }

@@ -126,7 +126,7 @@ export default function AppLayout({
       {!isMobile && (
         <aside
           className={cn(
-            "flex flex-col border-r bg-card transition-all duration-300 ease-in-out",
+            "flex flex-col border-r bg-muted/40 dark:bg-muted/20 transition-all duration-300 ease-in-out",
             isSidebarOpen ? "w-64" : "w-0",
           )}
         >
@@ -136,21 +136,21 @@ export default function AppLayout({
               !isSidebarOpen && "opacity-0",
             )}
           >
-            <div className="border-b p-4 flex items-center justify-between">
+            <div className="border-b p-4 flex items-center justify-between bg-card">
               <h2 className="text-lg font-semibold truncate">Umbau Manager</h2>
             </div>
 
-            <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
+            <nav className="flex-1 p-3 space-y-0.5 overflow-y-auto">
               {menuItems.map((item) => (
                 <button
                   type="button"
                   key={item.id}
                   onClick={() => handleNavigate(item.id)}
                   className={cn(
-                    "w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors",
+                    "w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-150",
                     currentPage === item.id
-                      ? "bg-primary text-primary-foreground"
-                      : "text-muted-foreground hover:bg-accent hover:text-accent-foreground",
+                      ? "bg-primary text-primary-foreground shadow-sm border-l-4 border-primary-foreground/30"
+                      : "text-muted-foreground hover:bg-accent hover:text-accent-foreground hover:translate-x-0.5",
                   )}
                 >
                   <item.icon className="h-4 w-4 shrink-0" />
@@ -205,8 +205,8 @@ export default function AppLayout({
             className="fixed inset-0 bg-black/50 z-40 lg:hidden cursor-default"
             onClick={() => setIsMobileMenuOpen(false)}
           />
-          <aside className="fixed inset-y-0 left-0 w-64 bg-card border-r z-50 flex flex-col lg:hidden">
-            <div className="border-b p-4 flex items-center justify-between">
+          <aside className="fixed inset-y-0 left-0 w-64 bg-muted/40 dark:bg-muted/20 border-r z-50 flex flex-col lg:hidden">
+            <div className="border-b p-4 flex items-center justify-between bg-card">
               <h2 className="text-lg font-semibold">Umbau Manager</h2>
               <button
                 type="button"
@@ -217,17 +217,17 @@ export default function AppLayout({
               </button>
             </div>
 
-            <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
+            <nav className="flex-1 p-3 space-y-0.5 overflow-y-auto">
               {menuItems.map((item) => (
                 <button
                   type="button"
                   key={item.id}
                   onClick={() => handleNavigate(item.id)}
                   className={cn(
-                    "w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors",
+                    "w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-150",
                     currentPage === item.id
-                      ? "bg-primary text-primary-foreground"
-                      : "text-muted-foreground hover:bg-accent hover:text-accent-foreground",
+                      ? "bg-primary text-primary-foreground shadow-sm border-l-4 border-primary-foreground/30"
+                      : "text-muted-foreground hover:bg-accent hover:text-accent-foreground hover:translate-x-0.5",
                   )}
                 >
                   <item.icon className="h-4 w-4 shrink-0" />

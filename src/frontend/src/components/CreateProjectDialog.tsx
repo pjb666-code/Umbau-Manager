@@ -72,10 +72,12 @@ export default function CreateProjectDialog({
       setColor(PROJECT_COLORS[0]);
       onOpenChange(false);
       onSuccess(projectId);
-    } catch (err: any) {
-      console.error("Create project error:", err);
+    } catch (error: unknown) {
+      console.error("Create project error:", error);
+      const err = error as { message?: string };
       setError(
-        "Fehler beim Erstellen des Projekts. Bitte versuchen Sie es erneut.",
+        err?.message ||
+          "Fehler beim Erstellen des Projekts. Bitte versuchen Sie es erneut.",
       );
     }
   };
