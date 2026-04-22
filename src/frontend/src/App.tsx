@@ -63,7 +63,9 @@ type Page =
   | "welcome";
 
 function AppContent() {
-  const { actor } = useActor();
+  // Ensure actor is initialized early — initializeAccessControl is called
+  // inside useActor's queryFn, so no duplicate call needed here
+  useActor();
   const qc = useQueryClient();
   const { identity, isInitializing, clear } = useInternetIdentity();
   const {
@@ -86,19 +88,6 @@ function AppContent() {
   const isAuthenticated = !!identity;
   const profileReady = isAuthenticated && !profileLoading && isFetched;
   const showProfileSetup = profileReady && userProfile === null;
-
-  // Re-initialize access control on every actor ready (handles post-build state resets)
-  useEffect(() => {
-    if (!actor) return;
-    actor
-      .initializeAccessControl()
-      .then(() => {
-        qc.invalidateQueries({ queryKey: ["isAdmin"] });
-        qc.invalidateQueries({ queryKey: ["hasTeamAssociation"] });
-        qc.invalidateQueries({ queryKey: ["callerUserProfile"] });
-      })
-      .catch(console.error);
-  }, [actor, qc]);
 
   // Check for invite token on mount
   useEffect(() => {
