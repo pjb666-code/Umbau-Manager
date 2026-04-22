@@ -63,8 +63,6 @@ type Page =
   | "welcome";
 
 function AppContent() {
-  // Ensure actor is initialized early — initializeAccessControl is called
-  // inside useActor's queryFn, so no duplicate call needed here
   useActor();
   const qc = useQueryClient();
   const { identity, isInitializing, clear } = useInternetIdentity();

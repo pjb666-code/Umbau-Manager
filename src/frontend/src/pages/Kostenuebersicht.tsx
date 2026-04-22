@@ -30,7 +30,7 @@ import {
   Trash2,
   X,
 } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import type { CostItem, DocumentId, Project } from "../backend";
 import { UserType } from "../backend";
@@ -365,8 +365,8 @@ export default function Kostenuebersicht({
     dokumentId: "none",
   });
 
-  // Kreditrechner state
-  const [loans, setLoans] = useState<Loan[]>([
+  // Kreditrechner state — persisted per project in localStorage
+  const defaultLoans: Loan[] = [
     {
       id: 1,
       name: "Bankkredit",
@@ -375,9 +375,71 @@ export default function Kostenuebersicht({
       zins: 3.5,
       st: [],
     },
-  ]);
-  const [selLoan, setSelLoan] = useState<number>(1);
+  ];
+
+  const [loans, setLoans] = useState<Loan[]>(() => {
+    if (!currentProjectId) return defaultLoans;
+    try {
+      const stored = localStorage.getItem(
+        `kreditrechner_loans_${currentProjectId}`,
+      );
+      if (stored) return JSON.parse(stored) as Loan[];
+    } catch {}
+    return defaultLoans;
+  });
+
+  const [selLoan, setSelLoan] = useState<number>(() => {
+    if (!currentProjectId) return 1;
+    try {
+      const stored = localStorage.getItem(
+        `kreditrechner_selloan_${currentProjectId}`,
+      );
+      if (stored) return JSON.parse(stored) as number;
+    } catch {}
+    return 1;
+  });
+
   const [stExpanded, setStExpanded] = useState(false);
+
+  // Persist loans + selLoan to localStorage whenever they change
+  useEffect(() => {
+    if (!currentProjectId) return;
+    try {
+      localStorage.setItem(
+        `kreditrechner_loans_${currentProjectId}`,
+        JSON.stringify(loans),
+      );
+      localStorage.setItem(
+        `kreditrechner_selloan_${currentProjectId}`,
+        JSON.stringify(selLoan),
+      );
+    } catch {}
+  }, [loans, selLoan, currentProjectId]);
+
+  // Load stored data when projectId changes
+  useEffect(() => {
+    if (!currentProjectId) return;
+    try {
+      const storedLoans = localStorage.getItem(
+        `kreditrechner_loans_${currentProjectId}`,
+      );
+      const storedSel = localStorage.getItem(
+        `kreditrechner_selloan_${currentProjectId}`,
+      );
+      const nextLoans = storedLoans
+        ? (JSON.parse(storedLoans) as Loan[])
+        : defaultLoans;
+      const nextSel = storedSel
+        ? (JSON.parse(storedSel) as number)
+        : (nextLoans[0]?.id ?? 1);
+      setLoans(nextLoans);
+      setSelLoan(nextSel);
+    } catch {
+      setLoans(defaultLoans);
+      setSelLoan(1);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentProjectId]);
 
   const loanResults = useMemo<Record<number, LoanResult>>(() => {
     const results: Record<number, LoanResult> = {};

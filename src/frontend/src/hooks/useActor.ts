@@ -28,8 +28,7 @@ export function useActor() {
       await actor.initializeAccessControl();
       return actor;
     },
-    // Actor is valid for the entire session — no need to refetch periodically
-    staleTime: Infinity,
+    staleTime: Number.POSITIVE_INFINITY,
     enabled: true,
   });
 
