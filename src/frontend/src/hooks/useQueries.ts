@@ -394,7 +394,7 @@ export function useGetAllProjects() {
 }
 
 export function useGetTopLevelProjects() {
-  const { actor, isFetching } = useActor();
+  const { actor } = useActor();
 
   return useQuery<Project[]>({
     queryKey: ["topLevelProjects"],
@@ -402,7 +402,8 @@ export function useGetTopLevelProjects() {
       if (!actor) return [];
       return actor.getTopLevelProjects();
     },
-    enabled: !!actor && !isFetching,
+    enabled: !!actor,
+    staleTime: 0,
   });
 }
 
