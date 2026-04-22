@@ -55,6 +55,31 @@ interface EditingState {
   value: string;
 }
 
+interface Sondertilgung {
+  id: number;
+  typ: "einmalig" | "jaehrlich";
+  monat?: number;
+  betrag: number;
+}
+
+interface Loan {
+  id: number;
+  name: string;
+  betrag: number;
+  laufzeit: number;
+  zins: number;
+  st: Sondertilgung[];
+}
+
+interface LoanResult {
+  monthly: number;
+  totalZins: number;
+  effMonths: number;
+  months: Array<{ restschuld: number; rate: number }>;
+}
+
+const LOAN_COLORS = ["#3b82f6", "#22c55e", "#a855f7", "#f97316", "#ef4444"];
+
 const COST_CATEGORIES = [
   "Energie",
   "Ausstattung",
@@ -67,6 +92,243 @@ const COST_STATUS = ["geplant", "bezahlt", "offen"];
 
 type SortField = "betrag" | "datum" | "beschreibung";
 type SortOrder = "asc" | "desc";
+
+// --- KreditChart ---
+function KreditChart({
+  loans,
+  loanResults,
+  formatCurrency,
+}: {
+  loans: Loan[];
+  loanResults: Record<number, LoanResult>;
+  formatCurrency: (n: number) => string;
+}) {
+  const [hoverX, setHoverX] = useState<number | null>(null);
+
+  const W = 600;
+  const H = 260;
+  const PAD = { top: 16, right: 16, bottom: 36, left: 72 };
+
+  const maxMonths = Math.max(
+    ...loans.map((l) => loanResults[l.id]?.effMonths ?? l.laufzeit),
+    12,
+  );
+  const maxRest = Math.max(...loans.map((l) => l.betrag), 1);
+
+  const toX = (m: number) =>
+    PAD.left + (m / maxMonths) * (W - PAD.left - PAD.right);
+  const toY = (v: number) =>
+    PAD.top + (1 - v / maxRest) * (H - PAD.top - PAD.bottom);
+
+  // Y axis labels
+  const yTicks = [0, 0.25, 0.5, 0.75, 1].map((f) => ({
+    val: f * maxRest,
+    y: toY(f * maxRest),
+  }));
+  // X axis labels
+  const xStep = maxMonths <= 60 ? 12 : maxMonths <= 240 ? 24 : 60;
+  const xTicks: number[] = [];
+  for (let m = 0; m <= maxMonths; m += xStep) xTicks.push(m);
+
+  const hoverMonth =
+    hoverX !== null
+      ? Math.round((hoverX / (W - PAD.left - PAD.right)) * maxMonths)
+      : null;
+
+  return (
+    <div className="relative select-none" style={{ minHeight: "260px" }}>
+      <svg
+        role="img"
+        aria-label="Restschuldverlauf aller Kredite"
+        viewBox={`0 0 ${W} ${H}`}
+        className="w-full"
+        style={{ minHeight: "250px" }}
+        onMouseMove={(e) => {
+          const rect = (
+            e.currentTarget as SVGSVGElement
+          ).getBoundingClientRect();
+          const svgX = ((e.clientX - rect.left) / rect.width) * W;
+          const chartX = svgX - PAD.left;
+          setHoverX(Math.max(0, Math.min(chartX, W - PAD.left - PAD.right)));
+        }}
+        onMouseLeave={() => setHoverX(null)}
+      >
+        {/* Grid lines */}
+        {yTicks.map((t) => (
+          <line
+            key={`yl-${t.val}`}
+            x1={PAD.left}
+            x2={W - PAD.right}
+            y1={t.y}
+            y2={t.y}
+            stroke="currentColor"
+            strokeOpacity={0.08}
+            strokeWidth={1}
+          />
+        ))}
+
+        {/* Y axis labels */}
+        {yTicks.map((t) => (
+          <text
+            key={`yt-${t.val}`}
+            x={PAD.left - 6}
+            y={t.y + 4}
+            textAnchor="end"
+            fontSize={10}
+            fill="currentColor"
+            fillOpacity={0.5}
+          >
+            {t.val >= 1000000
+              ? `${(t.val / 1000000).toFixed(1)}M`
+              : t.val >= 1000
+                ? `${Math.round(t.val / 1000)}k`
+                : t.val}
+          </text>
+        ))}
+
+        {/* X axis labels */}
+        {xTicks.map((m) => (
+          <text
+            key={`xt-${m}`}
+            x={toX(m)}
+            y={H - PAD.bottom + 16}
+            textAnchor="middle"
+            fontSize={10}
+            fill="currentColor"
+            fillOpacity={0.5}
+          >
+            {m === 0 ? "0" : `${m}Mo`}
+          </text>
+        ))}
+
+        {/* Lines */}
+        {loans.map((loan, idx) => {
+          const res = loanResults[loan.id];
+          if (!res) return null;
+          const color = LOAN_COLORS[idx % LOAN_COLORS.length];
+          const points = [
+            `${toX(0)},${toY(loan.betrag)}`,
+            ...res.months.map((mo, i) => `${toX(i + 1)},${toY(mo.restschuld)}`),
+          ].join(" ");
+          return (
+            <polyline
+              key={loan.id}
+              points={points}
+              fill="none"
+              stroke={color}
+              strokeWidth={2}
+              strokeLinejoin="round"
+            />
+          );
+        })}
+
+        {/* Hover vertical line */}
+        {hoverX !== null && hoverMonth !== null && (
+          <line
+            x1={toX(hoverMonth)}
+            x2={toX(hoverMonth)}
+            y1={PAD.top}
+            y2={H - PAD.bottom}
+            stroke="currentColor"
+            strokeOpacity={0.3}
+            strokeWidth={1}
+            strokeDasharray="4 2"
+          />
+        )}
+
+        {/* Hover dots */}
+        {hoverX !== null &&
+          hoverMonth !== null &&
+          loans.map((loan, idx) => {
+            const res = loanResults[loan.id];
+            if (!res) return null;
+            const mo = res.months[hoverMonth - 1];
+            if (!mo) return null;
+            const color = LOAN_COLORS[idx % LOAN_COLORS.length];
+            return (
+              <circle
+                key={loan.id}
+                cx={toX(hoverMonth)}
+                cy={toY(mo.restschuld)}
+                r={4}
+                fill={color}
+                stroke="white"
+                strokeWidth={1.5}
+              />
+            );
+          })}
+      </svg>
+
+      {/* Tooltip */}
+      {hoverX !== null && hoverMonth !== null && hoverMonth > 0 && (
+        <div
+          className="absolute top-2 pointer-events-none z-10 bg-card border rounded-lg shadow-lg p-3 text-xs min-w-[180px]"
+          style={{
+            left: `${Math.min((hoverX / (W - PAD.left - PAD.right)) * 100, 60)}%`,
+            transform: "translateX(-50%)",
+          }}
+        >
+          <div className="font-semibold text-foreground mb-1.5">
+            Monat {hoverMonth}
+          </div>
+          {loans.map((loan, idx) => {
+            const res = loanResults[loan.id];
+            const mo = res?.months[hoverMonth - 1];
+            const color = LOAN_COLORS[idx % LOAN_COLORS.length];
+            return (
+              <div
+                key={loan.id}
+                className="flex items-center justify-between gap-3 py-0.5"
+              >
+                <span className="flex items-center gap-1.5">
+                  <span
+                    className="inline-block w-2 h-2 rounded-full"
+                    style={{ backgroundColor: color }}
+                  />
+                  <span className="text-muted-foreground">{loan.name}</span>
+                </span>
+                {mo ? (
+                  <span className="font-mono font-medium">
+                    {formatCurrency(mo.restschuld)}
+                  </span>
+                ) : (
+                  <span className="text-green-500 font-bold">✓</span>
+                )}
+              </div>
+            );
+          })}
+          <div className="border-t mt-1.5 pt-1.5 flex justify-between">
+            <span className="text-muted-foreground">Gesamtrate</span>
+            <span className="font-mono font-semibold">
+              {formatCurrency(
+                loans.reduce((s, l) => {
+                  const mo = loanResults[l.id]?.months[hoverMonth - 1];
+                  return s + (mo?.rate ?? 0);
+                }, 0),
+              )}
+            </span>
+          </div>
+        </div>
+      )}
+
+      {/* Legend */}
+      <div className="flex flex-wrap gap-3 mt-2">
+        {loans.map((loan, idx) => (
+          <span
+            key={loan.id}
+            className="flex items-center gap-1.5 text-xs text-muted-foreground"
+          >
+            <span
+              className="inline-block w-3 h-0.5 rounded"
+              style={{ backgroundColor: LOAN_COLORS[idx % LOAN_COLORS.length] }}
+            />
+            {loan.name}
+          </span>
+        ))}
+      </div>
+    </div>
+  );
+}
 
 export default function Kostenuebersicht({
   currentProjectId,
@@ -104,38 +366,58 @@ export default function Kostenuebersicht({
   });
 
   // Kreditrechner state
-  const [kredit, setKredit] = useState({
-    kreditsumme: "",
-    zinssatz: "",
-    laufzeit: "",
-  });
+  const [loans, setLoans] = useState<Loan[]>([
+    {
+      id: 1,
+      name: "Bankkredit",
+      betrag: 200000,
+      laufzeit: 240,
+      zins: 3.5,
+      st: [],
+    },
+  ]);
+  const [selLoan, setSelLoan] = useState<number>(1);
+  const [stExpanded, setStExpanded] = useState(false);
 
-  const kreditErgebnis = useMemo(() => {
-    const summe = Number.parseFloat(kredit.kreditsumme);
-    const zins = Number.parseFloat(kredit.zinssatz);
-    const jahre = Number.parseFloat(kredit.laufzeit);
-    if (
-      !summe ||
-      !jahre ||
-      summe <= 0 ||
-      jahre <= 0 ||
-      Number.isNaN(summe) ||
-      Number.isNaN(zins) ||
-      Number.isNaN(jahre)
-    )
-      return null;
-    const n = jahre * 12;
-    let monatlicheRate: number;
-    if (!zins || zins === 0) {
-      monatlicheRate = summe / n;
-    } else {
-      const r = zins / 100 / 12;
-      monatlicheRate = (summe * (r * (1 + r) ** n)) / ((1 + r) ** n - 1);
+  const loanResults = useMemo<Record<number, LoanResult>>(() => {
+    const results: Record<number, LoanResult> = {};
+    for (const loan of loans) {
+      const monthlyRate = loan.zins / 100 / 12;
+      let annuity: number;
+      if (loan.zins === 0) {
+        annuity = loan.betrag / loan.laufzeit;
+      } else {
+        annuity =
+          (loan.betrag * monthlyRate) /
+          (1 - (1 + monthlyRate) ** -loan.laufzeit);
+      }
+      const months: Array<{ restschuld: number; rate: number }> = [];
+      let restschuld = loan.betrag;
+      let totalZins = 0;
+      for (let m = 1; m <= loan.laufzeit * 2 && restschuld > 0.01; m++) {
+        const interest = restschuld * monthlyRate;
+        let principal = annuity - interest;
+        let sonder = 0;
+        for (const st of loan.st) {
+          if (st.typ === "einmalig" && st.monat === m) sonder += st.betrag;
+          if (st.typ === "jaehrlich" && m % 12 === 0) sonder += st.betrag;
+        }
+        const actualPrincipal = Math.min(principal + sonder, restschuld);
+        const actualRate = interest + actualPrincipal;
+        restschuld = Math.max(0, restschuld - actualPrincipal);
+        totalZins += interest;
+        months.push({ restschuld, rate: actualRate });
+        if (restschuld <= 0.01) break;
+      }
+      results[loan.id] = {
+        monthly: annuity,
+        totalZins,
+        effMonths: months.length,
+        months,
+      };
     }
-    const gesamtbetrag = monatlicheRate * n;
-    const gesamtzinsen = gesamtbetrag - summe;
-    return { monatlicheRate, gesamtzinsen, gesamtbetrag };
-  }, [kredit]);
+    return results;
+  }, [loans]);
 
   const isLoading =
     costItemsLoading || projectsLoading || documentsLoading || mediaLoading;
@@ -1197,150 +1479,518 @@ export default function Kostenuebersicht({
             </div>
             <div className="h-px flex-1 bg-border" />
           </div>
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-xl">
-                <Calculator className="h-5 w-5 text-primary" />
-                Kreditrechner
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                {/* Inputs */}
-                <div className="space-y-5">
-                  <div className="space-y-2">
-                    <Label
-                      htmlFor="kredit-summe"
-                      className="text-sm font-medium"
-                    >
-                      Kreditsumme
-                    </Label>
-                    <div className="relative">
-                      <Input
-                        id="kredit-summe"
-                        type="number"
-                        min="0"
-                        step="1000"
-                        placeholder="z.B. 200000"
-                        value={kredit.kreditsumme}
-                        onChange={(e) =>
-                          setKredit({ ...kredit, kreditsumme: e.target.value })
-                        }
-                        className="pr-8"
-                        data-ocid="kredit-summe"
-                      />
-                      <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">
-                        €
-                      </span>
-                    </div>
-                  </div>
-                  <div className="space-y-2">
-                    <Label
-                      htmlFor="kredit-zinssatz"
-                      className="text-sm font-medium"
-                    >
-                      Zinssatz p.a.
-                    </Label>
-                    <div className="relative">
-                      <Input
-                        id="kredit-zinssatz"
-                        type="number"
-                        min="0"
-                        step="0.1"
-                        placeholder="z.B. 3.5"
-                        value={kredit.zinssatz}
-                        onChange={(e) =>
-                          setKredit({ ...kredit, zinssatz: e.target.value })
-                        }
-                        className="pr-8"
-                        data-ocid="kredit-zinssatz"
-                      />
-                      <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">
-                        %
-                      </span>
-                    </div>
-                  </div>
-                  <div className="space-y-2">
-                    <Label
-                      htmlFor="kredit-laufzeit"
-                      className="text-sm font-medium"
-                    >
-                      Laufzeit
-                    </Label>
-                    <div className="relative">
-                      <Input
-                        id="kredit-laufzeit"
-                        type="number"
-                        min="1"
-                        step="1"
-                        placeholder="z.B. 20"
-                        value={kredit.laufzeit}
-                        onChange={(e) =>
-                          setKredit({ ...kredit, laufzeit: e.target.value })
-                        }
-                        className="pr-14"
-                        data-ocid="kredit-laufzeit"
-                      />
-                      <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">
-                        Jahre
-                      </span>
-                    </div>
-                  </div>
-                </div>
 
-                {/* Results */}
-                <div className="flex flex-col justify-center">
-                  {kreditErgebnis ? (
-                    <div className="space-y-3" data-ocid="kredit-ergebnis">
-                      <div className="rounded-xl border bg-primary/5 p-5 flex items-center justify-between">
-                        <div>
-                          <div className="text-sm text-muted-foreground">
-                            Monatliche Rate
-                          </div>
-                          <div className="text-3xl font-bold text-primary mt-1">
-                            {formatCurrency(kreditErgebnis.monatlicheRate)}
-                          </div>
-                        </div>
-                        <Euro className="h-8 w-8 text-primary/30" />
-                      </div>
-                      <div className="rounded-xl border bg-card p-4 flex items-center justify-between">
-                        <div>
-                          <div className="text-sm text-muted-foreground">
-                            Gesamtzinsen
-                          </div>
-                          <div className="text-xl font-semibold text-orange-600 mt-0.5">
-                            {formatCurrency(kreditErgebnis.gesamtzinsen)}
-                          </div>
-                        </div>
-                      </div>
-                      <div className="rounded-xl border bg-card p-4 flex items-center justify-between">
-                        <div>
-                          <div className="text-sm text-muted-foreground">
-                            Gesamtbetrag
-                          </div>
-                          <div className="text-xl font-semibold mt-0.5">
-                            {formatCurrency(kreditErgebnis.gesamtbetrag)}
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="rounded-xl border border-dashed bg-muted/30 p-8 flex flex-col items-center justify-center text-center gap-3">
-                      <Calculator className="h-10 w-10 text-muted-foreground/40" />
-                      <div>
-                        <p className="text-sm font-medium text-muted-foreground">
-                          Ergebnis erscheint hier
-                        </p>
-                        <p className="text-xs text-muted-foreground/60 mt-1">
-                          Geben Sie Kreditsumme, Zinssatz und Laufzeit ein
-                        </p>
-                      </div>
-                    </div>
+          {/* Summary Cards */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
+            <Card>
+              <CardContent className="pt-5">
+                <div className="text-sm text-muted-foreground">
+                  Gesamtbetrag
+                </div>
+                <div className="text-2xl font-bold text-primary mt-1">
+                  {formatCurrency(loans.reduce((s, l) => s + l.betrag, 0))}
+                </div>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="pt-5">
+                <div className="text-sm text-muted-foreground">
+                  Gesamtrate / Monat
+                </div>
+                <div className="text-2xl font-bold mt-1">
+                  {formatCurrency(
+                    loans.reduce(
+                      (s, l) => s + (loanResults[l.id]?.monthly ?? 0),
+                      0,
+                    ),
                   )}
                 </div>
-              </div>
-            </CardContent>
-          </Card>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="pt-5">
+                <div className="text-sm text-muted-foreground">
+                  Gesamtzinslast
+                </div>
+                <div className="text-2xl font-bold text-orange-600 mt-1">
+                  {formatCurrency(
+                    loans.reduce(
+                      (s, l) => s + (loanResults[l.id]?.totalZins ?? 0),
+                      0,
+                    ),
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
+            {/* Left: Loan List + Editor */}
+            <div className="lg:col-span-2 space-y-4">
+              {/* Loan List */}
+              <Card>
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-base flex items-center justify-between">
+                    <span>Kredite</span>
+                    <button
+                      type="button"
+                      data-ocid="kredit.add_button"
+                      className="inline-flex items-center gap-1 text-xs px-2 py-1 rounded-md bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
+                      onClick={() => {
+                        const newId =
+                          Math.max(0, ...loans.map((l) => l.id)) + 1;
+                        const newLoan: Loan = {
+                          id: newId,
+                          name: `Kredit ${newId}`,
+                          betrag: 100000,
+                          laufzeit: 120,
+                          zins: 3.5,
+                          st: [],
+                        };
+                        setLoans([...loans, newLoan]);
+                        setSelLoan(newId);
+                      }}
+                    >
+                      <Plus className="h-3 w-3" /> Neu
+                    </button>
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-2 pt-0">
+                  {loans.map((loan, idx) => {
+                    const color = LOAN_COLORS[idx % LOAN_COLORS.length];
+                    const res = loanResults[loan.id];
+                    return (
+                      <button
+                        type="button"
+                        key={loan.id}
+                        data-ocid={`kredit.item.${idx + 1}`}
+                        className={`w-full flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-colors text-left ${selLoan === loan.id ? "bg-primary/5 border-primary/30" : "hover:bg-muted/50"}`}
+                        onClick={() => setSelLoan(loan.id)}
+                        aria-pressed={selLoan === loan.id}
+                      >
+                        <div
+                          className="w-1 self-stretch rounded-full flex-shrink-0"
+                          style={{ backgroundColor: color }}
+                        />
+                        <div className="flex-1 min-w-0">
+                          <div className="text-sm font-medium truncate">
+                            {loan.name}
+                          </div>
+                          <div className="text-xs text-muted-foreground">
+                            {formatCurrency(loan.betrag)} ·{" "}
+                            {res ? `${formatCurrency(res.monthly)}/Mo` : "—"}
+                          </div>
+                        </div>
+                        {loans.length > 1 && (
+                          <button
+                            type="button"
+                            data-ocid={`kredit.delete_button.${idx + 1}`}
+                            aria-label="Kredit löschen"
+                            className="h-6 w-6 flex items-center justify-center rounded hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors flex-shrink-0"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              const remaining = loans.filter(
+                                (l) => l.id !== loan.id,
+                              );
+                              setLoans(remaining);
+                              if (selLoan === loan.id)
+                                setSelLoan(remaining[0].id);
+                            }}
+                          >
+                            <X className="h-3.5 w-3.5" />
+                          </button>
+                        )}
+                      </button>
+                    );
+                  })}
+                </CardContent>
+              </Card>
+
+              {/* Editor for selected loan */}
+              {(() => {
+                const loan = loans.find((l) => l.id === selLoan);
+                if (!loan) return null;
+                const updateLoan = (patch: Partial<Loan>) => {
+                  setLoans(
+                    loans.map((l) =>
+                      l.id === selLoan ? { ...l, ...patch } : l,
+                    ),
+                  );
+                };
+                return (
+                  <Card>
+                    <CardHeader className="pb-3">
+                      <CardTitle className="text-base">
+                        Kredit bearbeiten
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-5">
+                      {/* Name */}
+                      <div className="space-y-1.5">
+                        <Label
+                          htmlFor="kredit-name"
+                          className="text-sm font-medium"
+                        >
+                          Name
+                        </Label>
+                        <Input
+                          id="kredit-name"
+                          data-ocid="kredit.name_input"
+                          value={loan.name}
+                          onChange={(e) => updateLoan({ name: e.target.value })}
+                        />
+                      </div>
+
+                      {/* Betrag Slider */}
+                      <div className="space-y-1.5">
+                        <div className="flex items-center justify-between">
+                          <Label className="text-sm font-medium">
+                            Kreditsumme
+                          </Label>
+                          <span className="text-sm font-semibold text-primary">
+                            {formatCurrency(loan.betrag)}
+                          </span>
+                        </div>
+                        <input
+                          type="range"
+                          data-ocid="kredit.betrag_input"
+                          min={10000}
+                          max={1000000}
+                          step={1000}
+                          value={loan.betrag}
+                          onChange={(e) =>
+                            updateLoan({ betrag: Number(e.target.value) })
+                          }
+                          className="w-full accent-primary"
+                        />
+                        <div className="flex justify-between text-xs text-muted-foreground">
+                          <span>10.000 €</span>
+                          <span>1.000.000 €</span>
+                        </div>
+                      </div>
+
+                      {/* Laufzeit Slider */}
+                      <div className="space-y-1.5">
+                        <div className="flex items-center justify-between">
+                          <Label className="text-sm font-medium">
+                            Laufzeit
+                          </Label>
+                          <span className="text-sm font-semibold text-primary">
+                            {loan.laufzeit} Monate /{" "}
+                            {Math.round(loan.laufzeit / 12)} Jahre
+                          </span>
+                        </div>
+                        <input
+                          type="range"
+                          data-ocid="kredit.laufzeit_input"
+                          min={12}
+                          max={480}
+                          step={6}
+                          value={loan.laufzeit}
+                          onChange={(e) =>
+                            updateLoan({ laufzeit: Number(e.target.value) })
+                          }
+                          className="w-full accent-primary"
+                        />
+                        <div className="flex justify-between text-xs text-muted-foreground">
+                          <span>12 Mo</span>
+                          <span>480 Mo</span>
+                        </div>
+                      </div>
+
+                      {/* Zins Slider */}
+                      <div className="space-y-1.5">
+                        <div className="flex items-center justify-between">
+                          <Label className="text-sm font-medium">
+                            Zinssatz p.a.
+                          </Label>
+                          <span className="text-sm font-semibold text-primary">
+                            {loan.zins.toFixed(1)} %
+                          </span>
+                        </div>
+                        <input
+                          type="range"
+                          data-ocid="kredit.zins_input"
+                          min={0}
+                          max={10}
+                          step={0.1}
+                          value={loan.zins}
+                          onChange={(e) =>
+                            updateLoan({ zins: Number(e.target.value) })
+                          }
+                          className="w-full accent-primary"
+                        />
+                        <div className="flex justify-between text-xs text-muted-foreground">
+                          <span>0 %</span>
+                          <span>10 %</span>
+                        </div>
+                      </div>
+
+                      {/* Sondertilgungen */}
+                      <div className="border rounded-lg overflow-hidden">
+                        <button
+                          type="button"
+                          data-ocid="kredit.sondertilgung_toggle"
+                          className="w-full flex items-center justify-between px-3 py-2.5 text-sm font-medium hover:bg-muted/50 transition-colors"
+                          onClick={() => setStExpanded(!stExpanded)}
+                        >
+                          <span>Sondertilgungen ({loan.st.length})</span>
+                          <span className="text-muted-foreground text-xs">
+                            {stExpanded ? "▲" : "▼"}
+                          </span>
+                        </button>
+                        {stExpanded && (
+                          <div className="border-t p-3 space-y-3 bg-muted/20">
+                            {loan.st.map((st, si) => (
+                              <div
+                                key={st.id}
+                                data-ocid={`kredit.sondertilgung.${si + 1}`}
+                                className="space-y-2 p-3 bg-card rounded-lg border"
+                              >
+                                <div className="flex items-center gap-2">
+                                  <div className="flex rounded-md overflow-hidden border text-xs">
+                                    <button
+                                      type="button"
+                                      className={`px-2.5 py-1 transition-colors ${st.typ === "einmalig" ? "bg-primary text-primary-foreground" : "hover:bg-muted/50"}`}
+                                      onClick={() => {
+                                        const updated = [...loan.st];
+                                        updated[si] = {
+                                          ...updated[si],
+                                          typ: "einmalig",
+                                        };
+                                        updateLoan({ st: updated });
+                                      }}
+                                    >
+                                      Einmalig
+                                    </button>
+                                    <button
+                                      type="button"
+                                      className={`px-2.5 py-1 transition-colors ${st.typ === "jaehrlich" ? "bg-primary text-primary-foreground" : "hover:bg-muted/50"}`}
+                                      onClick={() => {
+                                        const updated = [...loan.st];
+                                        updated[si] = {
+                                          ...updated[si],
+                                          typ: "jaehrlich",
+                                          monat: undefined,
+                                        };
+                                        updateLoan({ st: updated });
+                                      }}
+                                    >
+                                      Jährlich
+                                    </button>
+                                  </div>
+                                  <button
+                                    type="button"
+                                    className="ml-auto h-6 w-6 flex items-center justify-center rounded hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors"
+                                    onClick={() =>
+                                      updateLoan({
+                                        st: loan.st.filter((_, i) => i !== si),
+                                      })
+                                    }
+                                    aria-label="Sondertilgung löschen"
+                                  >
+                                    <X className="h-3.5 w-3.5" />
+                                  </button>
+                                </div>
+                                <div className="flex gap-2">
+                                  <div className="flex-1 space-y-1">
+                                    <Label className="text-xs">
+                                      Betrag (€)
+                                    </Label>
+                                    <Input
+                                      type="number"
+                                      min={0}
+                                      value={st.betrag}
+                                      className="h-8 text-sm"
+                                      onChange={(e) => {
+                                        const updated = [...loan.st];
+                                        updated[si] = {
+                                          ...updated[si],
+                                          betrag: Number(e.target.value),
+                                        };
+                                        updateLoan({ st: updated });
+                                      }}
+                                    />
+                                  </div>
+                                  {st.typ === "einmalig" && (
+                                    <div className="w-24 space-y-1">
+                                      <Label className="text-xs">
+                                        Monat Nr.
+                                      </Label>
+                                      <Input
+                                        type="number"
+                                        min={1}
+                                        value={st.monat ?? ""}
+                                        className="h-8 text-sm"
+                                        onChange={(e) => {
+                                          const updated = [...loan.st];
+                                          updated[si] = {
+                                            ...updated[si],
+                                            monat: Number(e.target.value),
+                                          };
+                                          updateLoan({ st: updated });
+                                        }}
+                                      />
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                            ))}
+                            <button
+                              type="button"
+                              data-ocid="kredit.sondertilgung_add_button"
+                              className="w-full flex items-center justify-center gap-1.5 text-xs py-1.5 rounded-md border border-dashed hover:bg-muted/50 transition-colors text-muted-foreground"
+                              onClick={() =>
+                                updateLoan({
+                                  st: [
+                                    ...loan.st,
+                                    {
+                                      id: Date.now(),
+                                      typ: "einmalig",
+                                      monat: 12,
+                                      betrag: 5000,
+                                    },
+                                  ],
+                                })
+                              }
+                            >
+                              <Plus className="h-3 w-3" /> Sondertilgung
+                              hinzufügen
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    </CardContent>
+                  </Card>
+                );
+              })()}
+            </div>
+
+            {/* Right: Chart + Table */}
+            <div className="lg:col-span-3 space-y-4">
+              {/* SVG Chart */}
+              <Card>
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-base">Restschuldverlauf</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <KreditChart
+                    loans={loans}
+                    loanResults={loanResults}
+                    formatCurrency={formatCurrency}
+                  />
+                </CardContent>
+              </Card>
+
+              {/* Table */}
+              <Card>
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-base">Übersicht</CardTitle>
+                </CardHeader>
+                <CardContent className="p-0">
+                  <div className="overflow-x-auto">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Name</TableHead>
+                          <TableHead className="text-right">Betrag</TableHead>
+                          <TableHead className="text-right">Laufzeit</TableHead>
+                          <TableHead className="text-right">Zins</TableHead>
+                          <TableHead className="text-right">Rate/Mo</TableHead>
+                          <TableHead className="text-right">Zinslast</TableHead>
+                          <TableHead className="text-right">Gesamt</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {loans.map((loan, idx) => {
+                          const res = loanResults[loan.id];
+                          const color = LOAN_COLORS[idx % LOAN_COLORS.length];
+                          return (
+                            <TableRow
+                              key={loan.id}
+                              data-ocid={`kredit.table_row.${idx + 1}`}
+                            >
+                              <TableCell>
+                                <span className="flex items-center gap-2">
+                                  <span
+                                    className="inline-block w-2.5 h-2.5 rounded-full flex-shrink-0"
+                                    style={{ backgroundColor: color }}
+                                  />
+                                  {loan.name}
+                                </span>
+                              </TableCell>
+                              <TableCell className="text-right font-mono text-sm">
+                                {formatCurrency(loan.betrag)}
+                              </TableCell>
+                              <TableCell className="text-right text-sm">
+                                {res?.effMonths ?? "—"} Mo
+                              </TableCell>
+                              <TableCell className="text-right text-sm">
+                                {loan.zins.toFixed(1)} %
+                              </TableCell>
+                              <TableCell className="text-right font-mono text-sm">
+                                {res ? formatCurrency(res.monthly) : "—"}
+                              </TableCell>
+                              <TableCell className="text-right font-mono text-sm text-orange-600">
+                                {res ? formatCurrency(res.totalZins) : "—"}
+                              </TableCell>
+                              <TableCell className="text-right font-mono text-sm font-semibold">
+                                {res
+                                  ? formatCurrency(loan.betrag + res.totalZins)
+                                  : "—"}
+                              </TableCell>
+                            </TableRow>
+                          );
+                        })}
+                        {/* Summenzeile */}
+                        <TableRow
+                          className="font-bold bg-muted/30"
+                          data-ocid="kredit.table_sum_row"
+                        >
+                          <TableCell>Gesamt</TableCell>
+                          <TableCell className="text-right font-mono">
+                            {formatCurrency(
+                              loans.reduce((s, l) => s + l.betrag, 0),
+                            )}
+                          </TableCell>
+                          <TableCell className="text-right">—</TableCell>
+                          <TableCell className="text-right">—</TableCell>
+                          <TableCell className="text-right font-mono">
+                            {formatCurrency(
+                              loans.reduce(
+                                (s, l) => s + (loanResults[l.id]?.monthly ?? 0),
+                                0,
+                              ),
+                            )}
+                          </TableCell>
+                          <TableCell className="text-right font-mono text-orange-600">
+                            {formatCurrency(
+                              loans.reduce(
+                                (s, l) =>
+                                  s + (loanResults[l.id]?.totalZins ?? 0),
+                                0,
+                              ),
+                            )}
+                          </TableCell>
+                          <TableCell className="text-right font-mono">
+                            {formatCurrency(
+                              loans.reduce(
+                                (s, l) =>
+                                  s +
+                                  l.betrag +
+                                  (loanResults[l.id]?.totalZins ?? 0),
+                                0,
+                              ),
+                            )}
+                          </TableCell>
+                        </TableRow>
+                      </TableBody>
+                    </Table>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          </div>
         </div>
       </div>
     </ErrorBoundary>
