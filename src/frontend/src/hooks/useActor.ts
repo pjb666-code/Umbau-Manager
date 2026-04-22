@@ -28,8 +28,8 @@ export function useActor() {
       await actor.initializeAccessControl();
       return actor;
     },
-    // Refresh every 30 seconds so initializeAccessControl re-runs after a new deploy
-    staleTime: 30 * 1000,
+    // Actor is valid for the entire session — no need to refetch periodically
+    staleTime: Infinity,
     enabled: true,
   });
 
